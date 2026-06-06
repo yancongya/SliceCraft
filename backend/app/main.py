@@ -111,23 +111,12 @@ async def detect_elements(
     else:
         raise HTTPException(status_code=400, detail="Invalid method")
     
-    # Create preview with bboxes only
+    # 返回原始图片（不含边框），前端自己绘制
     preview_img = img.copy()
     if len(preview_img.shape) == 2:
         preview_img = cv2.cvtColor(preview_img, cv2.COLOR_GRAY2BGR)
     elif preview_img.shape[2] == 4:
         preview_img = cv2.cvtColor(preview_img, cv2.COLOR_BGRA2BGR)
-    
-    # Draw bboxes with numbers
-    for i, (x, y, w, h) in enumerate(bboxes):
-        # 绿色包围盒
-        cv2.rectangle(preview_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        # 编号标签
-        label = str(i + 1)
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-        cv2.rectangle(preview_img, (x, y - th - 8), (x + tw + 4, y), (0, 255, 0), -1)
-        cv2.putText(preview_img, label, (x + 2, y - 4),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
     
     # Encode preview
     _, buffer = cv2.imencode('.png', preview_img)

@@ -287,7 +287,6 @@
             width: 72px; height: 72px;
             border-radius: 6px;
             border: 2px solid var(--border);
-            overflow: hidden;
             cursor: pointer;
             flex-shrink: 0;
             position: relative;
@@ -316,11 +315,41 @@
             pointer-events: none;
         }
         
+        .card-delete {
+            position: absolute; top: 2px; right: 2px;
+            width: 16px; height: 16px; border-radius: 8px;
+            background: rgba(220, 38, 38, 0.8); color: #fff;
+            font-size: 12px; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        
+        .elem-card:hover .card-delete {
+            opacity: 1;
+        }
+        
+        .card-delete:hover {
+            background: rgba(220, 38, 38, 1);
+        }
+        
         /* ============ 工具栏 ============ */
         .toolbar {
             position: absolute;
-            top: 12px; left: 50%;
-            transform: translateX(-50%);
+            top: 12px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .toolbar > * {
+            pointer-events: auto;
+        }
+        
+        .toolbar-inner {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -328,7 +357,6 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            z-index: 50;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
@@ -530,12 +558,14 @@
                         <div class="preview" id="splitPreview" onselectstart="return false" style="flex: 6;">
                             <!-- 工具栏 -->
                             <div class="toolbar" id="toolbar" style="display:none;">
-                                <button class="tool-btn" id="lassoBtn" title="套索工具 (L)">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
-                                    套索
-                                </button>
-                                <div class="tool-divider"></div>
-                                <span class="tool-hint" id="toolHint">点击空白处取消</span>
+                                <div class="toolbar-inner">
+                                    <button class="tool-btn" id="lassoBtn" title="套索工具 (L)">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                                        套索
+                                    </button>
+                                    <div class="tool-divider"></div>
+                                    <span class="tool-hint" id="toolHint"></span>
+                                </div>
                             </div>
                             <div class="upload" id="uploadZone">
                                 <div class="upload-icon">
@@ -546,6 +576,7 @@
                                 <button class="btn-outline" id="loadExampleBtn">加载示例图片</button>
                             </div>
                             <img id="splitImage" class="hidden" draggable="false">
+                            <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
                             <div class="marquee" id="marquee"></div>
                         </div>
                         <div class="elements-bar hidden" id="splitBar" style="flex: 3;">
@@ -712,27 +743,6 @@
         </div>
     </div>
     
-    <!-- 套索确认面板 -->
-    <div class="modal" id="lassoModal">
-        <div class="modal-body" style="width:400px;">
-            <button class="modal-close" id="lassoModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-            <h3 style="margin-bottom:16px;">套索切分</h3>
-            <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center;">
-                <img id="lassoPreview" src="" style="max-width:100%;max-height:200px;object-fit:contain;">
-            </div>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
-                    <input type="checkbox" id="autoDetectRemaining" checked>
-                    对剩余区域自动检测
-                </label>
-                <div style="display:flex;gap:8px;justify-content:flex-end;">
-                    <button class="btn btn-secondary" id="lassoCancel" style="width:auto;padding:0 16px;height:36px;">重新绘制</button>
-                    <button class="btn btn-primary" id="lassoConfirm" style="width:auto;padding:0 16px;height:36px;">确认切分</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <input type="file" id="fileInput" accept="image/*" style="display:none">
     <input type="file" id="elemInput" accept="image/*" multiple style="display:none">
     
@@ -884,28 +894,48 @@
             lassoCtx.lineWidth = 2;
             lassoCtx.stroke();
             
-            // 生成 mask
+            // 获取原图尺寸
+            const img = $('splitImage');
+            const imgNaturalW = img.naturalWidth;
+            const imgNaturalH = img.naturalHeight;
+            const imgDisplayW = img.offsetWidth;
+            const imgDisplayH = img.offsetHeight;
+            
+            // 计算缩放比例
+            const scaleX = imgNaturalW / imgDisplayW;
+            const scaleY = imgNaturalH / imgDisplayH;
+            
+            // 计算图片在画布中的偏移
+            const imgRect = img.getBoundingClientRect();
+            const canvasRect = lassoCanvas.getBoundingClientRect();
+            const offsetX = imgRect.left - canvasRect.left;
+            const offsetY = imgRect.top - canvasRect.top;
+            
+            // 生成 mask（使用原图尺寸）
             const maskCanvas = document.createElement('canvas');
-            maskCanvas.width = lassoCanvas.width;
-            maskCanvas.height = lassoCanvas.height;
+            maskCanvas.width = imgNaturalW;
+            maskCanvas.height = imgNaturalH;
             const maskCtx = maskCanvas.getContext('2d');
             maskCtx.fillStyle = 'black';
             maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
             maskCtx.beginPath();
-            maskCtx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+            // 将坐标从画布坐标转换为原图坐标
+            const firstX = (lassoPoints[0].x - offsetX) * scaleX;
+            const firstY = (lassoPoints[0].y - offsetY) * scaleY;
+            maskCtx.moveTo(firstX, firstY);
             for (let i = 1; i < lassoPoints.length; i++) {
-                maskCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
+                const x = (lassoPoints[i].x - offsetX) * scaleX;
+                const y = (lassoPoints[i].y - offsetY) * scaleY;
+                maskCtx.lineTo(x, y);
             }
             maskCtx.closePath();
             maskCtx.fillStyle = 'white';
             maskCtx.fill();
             
-            // 显示预览
-            $('lassoPreview').src = maskCanvas.toDataURL('image/png');
-            $('lassoModal').classList.add('active');
-            
-            // 保存 mask 数据
-            window.lassoMaskData = maskCanvas.toDataURL('image/png');
+            // 直接提交，不显示弹窗
+            const maskData = maskCanvas.toDataURL('image/png');
+            exitLassoMode();
+            submitLasso(maskData, false);
         }
         
         // 套索按钮
@@ -915,27 +945,6 @@
             } else {
                 enterLassoMode();
             }
-        });
-        
-        // 套索确认面板
-        $('lassoModalClose').addEventListener('click', () => {
-            $('lassoModal').classList.remove('active');
-            exitLassoMode();
-        });
-        
-        $('lassoCancel').addEventListener('click', () => {
-            $('lassoModal').classList.remove('active');
-            exitLassoMode();
-        });
-        
-        $('lassoConfirm').addEventListener('click', async () => {
-            $('lassoModal').classList.remove('active');
-            
-            const maskData = window.lassoMaskData;
-            const autoDetect = $('autoDetectRemaining').checked;
-            
-            exitLassoMode();
-            await submitLasso(maskData, autoDetect);
         });
         
         async function submitLasso(maskData, autoDetect) {
@@ -1026,12 +1035,10 @@
             });
         }
         
-        // 监听窗口大小变化
-        window.addEventListener('resize', updateElementsLayout);
-        
         // 使用 ResizeObserver 监听容器大小变化
         const resizeObserver = new ResizeObserver(() => {
             updateElementsLayout();
+            drawOverlay();
         });
         
         // ============ 拖拽调节 ============
@@ -1352,25 +1359,165 @@
             const list = $('splitList');
             list.innerHTML = '';
             
-            state.splitElements.forEach(el => {
+            state.splitElements.forEach((el, i) => {
                 const div = document.createElement('div');
                 div.className = 'elem-card' + (el.selected ? ' selected' : '');
                 div.dataset.index = el.index;
-                div.innerHTML = '<img src="' + el.preview + '"><span class="num">' + el.index + '</span>';
+                div.innerHTML = '<img src="' + el.preview + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
                 div.addEventListener('click', e => {
-                    console.log('click on element', el.index);
+                    if (e.target.classList.contains('card-delete')) return;
                     if (e.shiftKey) { el.selected = true; }
                     else { el.selected = !el.selected; }
                     div.classList.toggle('selected', el.selected);
                     updateBadges();
                 });
-                div.addEventListener('dblclick', () => openModal(el.preview));
+                div.addEventListener('dblclick', e => {
+                    if (e.target.classList.contains('card-delete')) return;
+                    openModal(el.preview);
+                });
+                div.querySelector('.card-delete').addEventListener('click', e => {
+                    e.stopPropagation();
+                    state.splitElements.splice(i, 1);
+                    renderSplitElements();
+                });
                 list.appendChild(div);
             });
             
             updateBadges();
             updateElementsLayout();
+            drawOverlay();
         }
+        
+        // 绘制画布上的边框
+        function drawOverlay() {
+            const canvas = $('overlayCanvas');
+            const img = $('splitImage');
+            const preview = $('splitPreview');
+            if (!canvas || !img || img.classList.contains('hidden')) return;
+            
+            // 获取容器和图片的位置
+            const containerRect = preview.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            
+            // 设置 canvas 尺寸为实际像素（解决模糊问题）
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = containerRect.width * dpr;
+            canvas.height = containerRect.height * dpr;
+            canvas.style.width = containerRect.width + 'px';
+            canvas.style.height = containerRect.height + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!state.splitElements.length) return;
+            
+            // 计算图片在容器中的偏移
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            
+            // 计算缩放比例
+            const scaleX = imgRect.width / img.naturalWidth;
+            const scaleY = imgRect.height / img.naturalHeight;
+            
+            state.splitElements.forEach((el, i) => {
+                const [x, y, w, h] = el.bbox;
+                const sx = offsetX + x * scaleX;
+                const sy = offsetY + y * scaleY;
+                const sw = w * scaleX;
+                const sh = h * scaleY;
+                
+                // 绘制绿色边框
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(sx, sy, sw, sh);
+                
+                // 绘制编号标签
+                ctx.fillStyle = '#22c55e';
+                ctx.font = 'bold 11px sans-serif';
+                const text = String(el.index);
+                const tw = ctx.measureText(text).width + 8;
+                ctx.fillRect(sx, sy - 18, tw, 18);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(text, sx + 4, sy - 5);
+            });
+            
+            // 启用交互
+            canvas.style.pointerEvents = 'auto';
+        }
+        
+        // 点击画布上的边框删除元素
+        $('overlayCanvas').addEventListener('click', e => {
+            if (!state.splitElements.length) return;
+            
+            const canvas = $('overlayCanvas');
+            const img = $('splitImage');
+            const preview = $('splitPreview');
+            const containerRect = preview.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            const clickX = e.clientX - containerRect.left;
+            const clickY = e.clientY - containerRect.top;
+            
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            const scaleX = imgRect.width / img.naturalWidth;
+            const scaleY = imgRect.height / img.naturalHeight;
+            
+            // 检查点击是否在某个边框内
+            for (let i = state.splitElements.length - 1; i >= 0; i--) {
+                const el = state.splitElements[i];
+                const [x, y, w, h] = el.bbox;
+                const sx = offsetX + x * scaleX;
+                const sy = offsetY + y * scaleY;
+                const sw = w * scaleX;
+                const sh = h * scaleY;
+                
+                if (clickX >= sx && clickX <= sx + sw && clickY >= sy && clickY <= sy + sh) {
+                    state.splitElements.splice(i, 1);
+                    renderSplitElements();
+                    setStatus('已删除元素 ' + el.index);
+                    return;
+                }
+            }
+        });
+        
+        // 鼠标悬停样式
+        $('overlayCanvas').addEventListener('mousemove', e => {
+            if (!state.splitElements.length) return;
+            
+            const canvas = $('overlayCanvas');
+            const img = $('splitImage');
+            const preview = $('splitPreview');
+            const containerRect = preview.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            const mx = e.clientX - containerRect.left;
+            const my = e.clientY - containerRect.top;
+            
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            const scaleX = imgRect.width / img.naturalWidth;
+            const scaleY = imgRect.height / img.naturalHeight;
+            
+            let hovering = false;
+            for (const el of state.splitElements) {
+                const [x, y, w, h] = el.bbox;
+                const sx = offsetX + x * scaleX;
+                const sy = offsetY + y * scaleY;
+                const sw = w * scaleX;
+                const sh = h * scaleY;
+                if (mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh) {
+                    hovering = true;
+                    break;
+                }
+            }
+            canvas.style.cursor = hovering ? 'pointer' : 'default';
+        });
+        
+        // 窗口大小变化时重绘
+        window.addEventListener('resize', () => {
+            updateElementsLayout();
+            drawOverlay();
+        });
         
         $('selectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = true); renderSplitElements(); });
         $('deselectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = false); renderSplitElements(); });
@@ -1427,17 +1574,26 @@
             const list = $('removeList');
             list.innerHTML = '';
             
-            state.removeElements.forEach(el => {
+            state.removeElements.forEach((el, i) => {
                 const div = document.createElement('div');
                 div.className = 'elem-card' + (el.selected ? ' selected' : '');
                 div.dataset.index = el.index;
-                div.innerHTML = '<img src="' + (el.processed ? el.result : el.preview) + '"><span class="num">' + el.index + '</span>';
+                div.innerHTML = '<img src="' + (el.processed ? el.result : el.preview) + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
                 div.addEventListener('click', e => {
+                    if (e.target.classList.contains('card-delete')) return;
                     if (e.shiftKey) { el.selected = true; } else { el.selected = !el.selected; }
                     div.classList.toggle('selected', el.selected);
                     updateBadges();
                 });
-                div.addEventListener('dblclick', () => openModal(el.processed ? el.result : el.preview));
+                div.addEventListener('dblclick', e => {
+                    if (e.target.classList.contains('card-delete')) return;
+                    openModal(el.processed ? el.result : el.preview);
+                });
+                div.querySelector('.card-delete').addEventListener('click', e => {
+                    e.stopPropagation();
+                    state.removeElements.splice(i, 1);
+                    renderRemoveElements();
+                });
                 list.appendChild(div);
             });
             
@@ -1604,6 +1760,12 @@
         document.querySelectorAll('.elements-container').forEach(el => {
             resizeObserver.observe(el);
         });
+        
+        // 监听预览区域大小变化
+        const splitPreview = $('splitPreview');
+        if (splitPreview) {
+            resizeObserver.observe(splitPreview);
+        }
     </script>
 </body>
 </html>
