@@ -970,6 +970,7 @@
                 lassoEl.index = state.splitElements.length + 1;
                 lassoEl.selected = true;
                 state.splitElements.push(lassoEl);
+                console.log('添加套索元素，index:', lassoEl.index);
                 
                 // 添加剩余元素
                 if (data.remaining_elements) {
@@ -977,6 +978,7 @@
                         el.index = state.splitElements.length + 1;
                         el.selected = true;
                         state.splitElements.push(el);
+                        console.log('添加剩余元素，index:', el.index);
                     });
                 }
                 
