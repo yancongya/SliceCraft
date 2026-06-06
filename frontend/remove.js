@@ -6,14 +6,10 @@
             offsetX: 0,
             offsetY: 0,
             isDragging: false,
-            isErasing: false,
-            showingOriginal: false,
             lastX: 0,
             lastY: 0,
             currentImage: null,
-            currentElement: null,
-            eraserSize: 20,
-            bgMode: 'checker'
+            currentElement: null
         };
         
         // 在画布上显示图片
@@ -55,74 +51,58 @@
         }
         
         // 眼睛功能 - 按住查看原图，松开显示抠图结果
+        let showingOriginal = false;
         function showOriginal() {
-            if (!canvasState.currentElement?.processed || canvasState.showingOriginal) return;
-            canvasState.showingOriginal = true;
+            if (!canvasState.currentElement?.processed || showingOriginal) return;
+            showingOriginal = true;
             $('eyeBtn')?.classList.add('active');
             showOnCanvas(canvasState.currentElement.preview, canvasState.currentElement);
         }
-        
         function hideOriginal() {
-            if (!canvasState.showingOriginal) return;
-            canvasState.showingOriginal = false;
+            if (!showingOriginal) return;
+            showingOriginal = false;
             $('eyeBtn')?.classList.remove('active');
             if (canvasState.currentElement) {
                 showOnCanvas(canvasState.currentElement.result, canvasState.currentElement);
             }
         }
-        
         $('eyeBtn')?.addEventListener('mousedown', showOriginal);
         $('eyeBtn')?.addEventListener('mouseup', hideOriginal);
         $('eyeBtn')?.addEventListener('mouseleave', hideOriginal);
-        
-        // V 键按住查看原图
-        document.addEventListener('keydown', e => {
-            if (e.key === 'v' || e.key === 'V') showOriginal();
-        });
-        document.addEventListener('keyup', e => {
-            if (e.key === 'v' || e.key === 'V') hideOriginal();
-        });
+        document.addEventListener('keydown', e => { if (e.key === 'v' || e.key === 'V') showOriginal(); });
+        document.addEventListener('keyup', e => { if (e.key === 'v' || e.key === 'V') hideOriginal(); });
         
         // 橡皮擦功能
+        let isErasing = false;
+        let eraserSize = 20;
         $('eraserBtn')?.addEventListener('click', () => {
-            canvasState.isErasing = !canvasState.isErasing;
-            $('eraserBtn').classList.toggle('active', canvasState.isErasing);
+            isErasing = !isErasing;
+            $('eraserBtn').classList.toggle('active', isErasing);
             updateCanvasCursor();
         });
-        
-        $('eraserSize')?.addEventListener('input', e => {
-            canvasState.eraserSize = parseInt(e.target.value);
-        });
-        
+        $('eraserSize')?.addEventListener('input', e => { eraserSize = parseInt(e.target.value); });
         function updateCanvasCursor() {
             const container = $('canvasContainer');
             if (!container) return;
-            if (canvasState.isErasing) {
-                const size = canvasState.eraserSize;
-                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1}" fill="none" stroke="red" stroke-width="1.5"/></svg>`;
-                const encoded = btoa(svg);
-                container.style.cursor = `url('data:image/svg+xml;base64,${encoded}') ${size/2} ${size/2}, crosshair`;
+            if (isErasing) {
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${eraserSize}" height="${eraserSize}" viewBox="0 0 ${eraserSize} ${eraserSize}"><circle cx="${eraserSize/2}" cy="${eraserSize/2}" r="${eraserSize/2 - 1}" fill="none" stroke="red" stroke-width="1.5"/></svg>`;
+                container.style.cursor = `url('data:image/svg+xml;base64,${btoa(svg)}') ${eraserSize/2} ${eraserSize/2}, crosshair`;
             } else {
                 container.style.cursor = 'grab';
             }
         }
-        
         function eraseAtPosition(x, y) {
             if (!canvasState.currentElement) return;
             const canvas = $('removeCanvas');
             if (!canvas) return;
-            
             const ctx = canvas.getContext('2d');
-            const radius = canvasState.eraserSize / 2 / canvasState.scale;
-            
+            const radius = eraserSize / 2 / canvasState.scale;
             ctx.save();
             ctx.globalCompositeOperation = 'destination-out';
             ctx.beginPath();
             ctx.arc(x, y, radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
-            
-            // 保存修改
             canvasState.currentElement.result = canvas.toDataURL('image/png');
         }
         
@@ -131,60 +111,39 @@
             const canvas = $('removeCanvas');
             const container = $('canvasContainer');
             if (!canvas || !container || !canvasState.currentImage) return;
-            
             const img = new Image();
             img.onload = () => {
                 const containerW = container.offsetWidth;
                 const containerH = container.offsetHeight;
                 const padding = 40;
-                
                 const scaleX = (containerW - padding) / img.width;
                 const scaleY = (containerH - padding) / img.height;
                 canvasState.scale = Math.min(scaleX, scaleY, 1);
                 canvasState.offsetX = 0;
                 canvasState.offsetY = 0;
-                
                 drawCanvas(img);
             };
             img.src = canvasState.currentImage;
         }
-        
-        // 归位按钮
         $('resetViewBtn')?.addEventListener('click', resetRemoveView);
-        
-        // R 键归位
-        document.addEventListener('keydown', e => {
-            if ((e.key === 'r' || e.key === 'R') && state.currentTab === 'remove') {
-                resetRemoveView();
-            }
-        });
+        document.addEventListener('keydown', e => { if ((e.key === 'r' || e.key === 'R') && state.currentTab === 'remove') resetRemoveView(); });
         
         // 背景色切换
+        let bgMode = 'checker';
         document.querySelectorAll('[data-bg]').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('[data-bg]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                canvasState.bgMode = btn.dataset.bg;
+                bgMode = btn.dataset.bg;
                 updateCanvasBackground();
             });
         });
-        
         function updateCanvasBackground() {
             const container = $('canvasContainer');
             if (!container) return;
-            
-            // 重置所有背景样式
-            container.style.cssText = container.style.cssText.replace(/background[^;]*;?/g, '');
-            container.style.position = 'absolute';
-            container.style.top = '0';
-            container.style.left = '0';
-            container.style.right = '0';
-            container.style.bottom = '0';
-            container.style.overflow = 'hidden';
-            container.style.cursor = canvasState.isErasing ? 'crosshair' : 'grab';
-            container.style.zIndex = '5';
-            
-            switch (canvasState.bgMode) {
+            container.style.backgroundColor = '';
+            container.style.backgroundImage = '';
+            switch (bgMode) {
                 case 'checker':
                     container.style.backgroundImage = 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)';
                     container.style.backgroundSize = '20px 20px';
@@ -240,16 +199,16 @@
         });
         
         // 画布交互
+        let isErasingActive = false;
         $('canvasContainer')?.addEventListener('mousedown', e => {
             if (e.target.closest('.toolbar')) return;
-            
             // 空格键或非橡皮擦模式：拖拽
-            if (canvasState.tempDrag || !canvasState.isErasing) {
+            if (canvasState.tempDrag || !isErasing) {
                 canvasState.isDragging = true;
                 canvasState.lastX = e.clientX;
                 canvasState.lastY = e.clientY;
             } else {
-                canvasState.isErasingActive = true;
+                isErasingActive = true;
                 const canvas = $('removeCanvas');
                 if (canvas) {
                     const rect = canvas.getBoundingClientRect();
@@ -261,7 +220,7 @@
         });
         
         document.addEventListener('mousemove', e => {
-            if (canvasState.isErasingActive && !canvasState.tempDrag) {
+            if (isErasingActive && !canvasState.tempDrag) {
                 const canvas = $('removeCanvas');
                 if (canvas) {
                     const rect = canvas.getBoundingClientRect();
@@ -271,7 +230,6 @@
                 }
                 return;
             }
-            
             if (!canvasState.isDragging) return;
             const dx = e.clientX - canvasState.lastX;
             const dy = e.clientY - canvasState.lastY;
@@ -287,7 +245,7 @@
         
         document.addEventListener('mouseup', () => {
             canvasState.isDragging = false;
-            canvasState.isErasingActive = false;
+            isErasingActive = false;
         });
         
         $('uploadElemBtn').addEventListener('click', () => $('elemInput').click());

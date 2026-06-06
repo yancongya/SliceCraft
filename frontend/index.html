@@ -33,6 +33,17 @@
                 <div class="layout">
                     <div class="content">
                         <div class="preview" id="splitPreview" onselectstart="return false" style="flex: 6;">
+                            <!-- 工具栏 -->
+                            <div class="toolbar" id="toolbar" style="display:none;">
+                                <div class="toolbar-inner">
+                                    <button class="tool-btn" id="lassoBtn" title="套索工具 (L)">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                                        套索
+                                    </button>
+                                    <div class="tool-divider"></div>
+                                    <span class="tool-hint" id="toolHint"></span>
+                                </div>
+                            </div>
                             <div class="upload" id="uploadZone">
                                 <div class="upload-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -41,34 +52,8 @@
                                 <div class="upload-hint">或点击选择 · PNG、JPG、WebP</div>
                                 <button class="btn-outline" id="loadExampleBtn">加载示例图片</button>
                             </div>
-                            <img id="splitImage" style="display:none;" crossorigin="anonymous">
-                            <div class="canvas-container" id="splitCanvasContainer" style="display:none;">
-                                <canvas id="splitCanvas"></canvas>
-                            </div>
-                            <!-- 切分工具栏 -->
-                            <div class="toolbar" id="splitToolbar" style="display:none;">
-                                <div class="toolbar-inner">
-                                    <button class="tool-btn" id="lassoBtn" title="套索工具 (L)">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
-                                    </button>
-                                    <div class="tool-divider"></div>
-                                    <span class="tool-hint" id="toolHint"></span>
-                                    <div class="tool-divider"></div>
-                                    <button class="tool-btn" id="splitResetBtn" title="归位 (R)">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                                    </button>
-                                    <div class="tool-divider"></div>
-                                    <button class="tool-btn active" data-split-bg="checker" title="透明棋盘格">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                                    </button>
-                                    <button class="tool-btn" data-split-bg="white" title="白色背景">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                                    </button>
-                                    <button class="tool-btn" data-split-bg="black" title="黑色背景">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                                    </button>
-                                </div>
-                            </div>
+                            <img id="splitImage" class="hidden" draggable="false">
+                            <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
                             <div class="marquee" id="marquee"></div>
                         </div>
                         <div class="elements-bar hidden" id="splitBar" style="flex: 3;">
@@ -166,7 +151,7 @@
                             <div class="canvas-container" id="canvasContainer" style="display:none;">
                                 <canvas id="removeCanvas"></canvas>
                             </div>
-                            <!-- 工具栏 -->
+                            <!-- 抠图工具栏 -->
                             <div class="toolbar" id="removeToolbar" style="display:none;">
                                 <div class="toolbar-inner">
                                     <button class="tool-btn" id="resetViewBtn" title="归位 (R)">
