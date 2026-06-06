@@ -155,6 +155,15 @@
             renderRemoveResults();
             updateBadges();
             updateElementsLayout();
+            
+            // 默认显示第一个元素到画布
+            if (has && !canvasState.currentImage) {
+                const firstEl = state.removeElements[0];
+                const imgSrc = firstEl.processed ? firstEl.result : firstEl.preview;
+                showOnCanvas(imgSrc, firstEl);
+                firstEl.selected = true;
+                list.querySelector('.elem-card')?.classList.add('selected');
+            }
         }
         
         function renderRemoveResults() {
