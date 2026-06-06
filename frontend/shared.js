@@ -367,7 +367,9 @@
                 preview.appendChild(marquee);
             }
             
-            let active = false, sx, sy, altKey = false;
+            let active = false, sx, sy, shiftKey = false;
+            let mouseDownTarget = null;
+            let mouseDownTime = 0;
             
             // 阻止默认的拖拽和选择行为
             preview.addEventListener('dragstart', e => e.preventDefault());
@@ -377,12 +379,25 @@
             });
             
             preview.addEventListener('mousedown', e => {
-                // 忽略按钮和缩略图点击
-                if (e.target.closest('button') || e.target.closest('.elem-card') || e.target.closest('.upload')) return;
+                mouseDownTarget = e.target;
+                mouseDownTime = Date.now();
+                console.log('mousedown on', previewId, 'target:', e.target.className, 'shift:', e.shiftKey);
+                
+                // 忽略按钮点击
+                if (e.target.closest('button')) return;
+                
+                // 如果点击在元素卡片上，不启动框选
+                if (e.target.closest('.elem-card')) {
+                    console.log('clicked on elem-card, skip marquee');
+                    return;
+                }
+                
+                // 忽略上传区域
+                if (e.target.closest('.upload')) return;
                 
                 e.preventDefault();
                 active = true;
-                altKey = e.altKey; // 记录 Alt 键状态
+                shiftKey = e.shiftKey;
                 const rect = preview.getBoundingClientRect();
                 sx = e.clientX - rect.left;
                 sy = e.clientY - rect.top;
@@ -414,7 +429,19 @@
             });
             
             preview.addEventListener('mouseup', e => {
-                if (!active) return;
+                if (!active) {
+                    // 处理点击空白的情况
+                    if (!e.target.closest('.elem-card') && !e.target.closest('button')) {
+                        const elapsed = Date.now() - mouseDownTime;
+                        if (elapsed < 300) {
+                            // 短点击：取消全部选择
+                            state[elementsKey].forEach(el => el.selected = false);
+                            preview.querySelectorAll('.elem-card').forEach(c => c.classList.remove('selected'));
+                            updateBadges();
+                        }
+                    }
+                    return;
+                }
                 e.preventDefault();
                 active = false;
                 
@@ -422,10 +449,15 @@
                 const box = marquee.getBoundingClientRect();
                 marquee.style.display = 'none';
                 
-                // 如果选框太小，忽略
-                if (box.width < 5 || box.height < 5) return;
+                // 如果选框太小，视为点击空白，取消全部选择
+                if (box.width < 5 && box.height < 5) {
+                    state[elementsKey].forEach(el => el.selected = false);
+                    preview.querySelectorAll('.elem-card').forEach(c => c.classList.remove('selected'));
+                    updateBadges();
+                    return;
+                }
                 
-                // 选中或取消选中框内的元素
+                // 框选逻辑
                 const cards = preview.querySelectorAll('.elem-card');
                 let count = 0;
                 
@@ -435,14 +467,14 @@
                         const idx = parseInt(card.dataset.index);
                         const el = state[elementsKey].find(e => e.index === idx);
                         if (el) {
-                            if (altKey) {
-                                // Alt 键：减选
-                                el.selected = false;
-                                card.classList.remove('selected');
-                            } else {
-                                // 普通框选：选中
+                            if (shiftKey) {
+                                // Shift + 框选：强制加选
                                 el.selected = true;
                                 card.classList.add('selected');
+                            } else {
+                                // 普通框选：切换选中状态
+                                el.selected = !el.selected;
+                                card.classList.toggle('selected', el.selected);
                             }
                             count++;
                         }
@@ -451,8 +483,18 @@
                 
                 if (count > 0) {
                     updateBadges();
-                    setStatus(altKey ? '取消选中了 ' + count + ' 个元素' : '框选了 ' + count + ' 个元素');
+                    const selectedCount = state[elementsKey].filter(e => e.selected).length;
+                    setStatus(`框选了 ${count} 个元素，共选中 ${selectedCount} 个`);
                 }
+            });
+            
+            // 双击空白：全选
+            preview.addEventListener('dblclick', e => {
+                if (e.target.closest('.elem-card') || e.target.closest('button')) return;
+                state[elementsKey].forEach(el => el.selected = true);
+                preview.querySelectorAll('.elem-card').forEach(c => c.classList.add('selected'));
+                updateBadges();
+                setStatus('已全选');
             });
             
             // 文档级别的 mouseup，确保鼠标离开预览区域时也能结束框选
