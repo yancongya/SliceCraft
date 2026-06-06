@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片元素拆分工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 24px;
+            color: #1a1a1a;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        
+        .preview-area {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+        
+        .parameter-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .upload-area:hover {
+            border-color: #007AFF;
+            background: #f0f8ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #007AFF;
+            background: #e6f2ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-text {
+            color: #666;
+        }
+        
+        #imagePreview {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            display: none;
+        }
+        
+        .parameter-group {
+            margin-bottom: 20px;
+        }
+        
+        .parameter-group h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .parameter {
+            margin-bottom: 15px;
+        }
+        
+        .parameter label {
+            display: block;
+            font-size: 13px;
+            color: #444;
+            margin-bottom: 5px;
+        }
+        
+        .parameter input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 2px;
+            outline: none;
+        }
+        
+        .parameter input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #007AFF;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .parameter .value {
+            display: inline-block;
+            float: right;
+            font-size: 13px;
+            color: #007AFF;
+            font-weight: 500;
+        }
+        
+        .parameter select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button.primary {
+            background: #007AFF;
+            color: white;
+        }
+        
+        button.primary:hover {
+            background: #0056b3;
+        }
+        
+        button.secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        button.secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .results-section {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .result-card {
+            background: #f9f9f9;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .result-card:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+        
+        .preset-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            color: #333;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .preset-btn:hover {
+            background: #007AFF;
+            color: #fff;
+            border-color: #007AFF;
+        }
+        
+        .result-card img {
+            max-width: 100%;
+            max-height: 120px;
+            object-fit: contain;
+        }
+        
+        .result-card .label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+        }
+        
+        .status-bar {
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-text {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .status-text.success {
+            color: #34C759;
+        }
+        
+        .status-text.error {
+            color: #FF3B30;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ddd;
+            border-top-color: #007AFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Modal for enlarged preview */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 图片元素拆分工具</h1>
+            <p style="color: #666; margin-top: 8px;">从元素板图片中自动检测并裁剪出每个独立元素，然后逐个去背景导出透明 PNG</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="preview-area">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">
+                        <p>拖拽图片到此处，或点击上传</p>
+                        <p style="font-size: 12px; color: #999; margin-top: 5px;">支持 PNG, JPG, WebP</p>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+                <img id="imagePreview" src="" alt="预览" style="display: none;">
+                <canvas id="canvasPreview" style="display: none; max-width: 100%;"></canvas>
+            </div>
+            
+            <div class="parameter-panel">
+                <div class="parameter-group">
+                    <h3>检测方法</h3>
+                    <div class="parameter">
+                        <select id="detectionMethod">
+                            <option value="smart">智能检测（推荐）</option>
+                            <option value="canny">Canny 边缘检测</option>
+                            <option value="flood">泛洪填充</option>
+                            <option value="alpha">Alpha 通道</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 预设方案 -->
+                <div class="parameter-group">
+                    <h3>快速预设</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <button class="preset-btn" onclick="applyPreset('general')">通用</button>
+                        <button class="preset-btn" onclick="applyPreset('sticker')">贴纸/图标</button>
+                        <button class="preset-btn" onclick="applyPreset('sprite')">游戏精灵</button>
+                        <button class="preset-btn" onclick="applyPreset('handdrawn')">手绘插画</button>
+                        <button class="preset-btn" onclick="applyPreset('solid')">纯色背景</button>
+                    </div>
+                </div>
+                
+                <!-- Smart Parameters -->
+                <div id="smartParams" class="parameter-group">
+                    <h3>智能检测参数</h3>
+                    <div class="parameter">
+                        <select id="smart_mode">
+                            <option value="auto">自动选择</option>
+                            <option value="color">颜色分割</option>
+                            <option value="threshold">自适应阈值</option>
+                            <option value="edge">增强边缘</option>
+                        </select>
+                    </div>
+                    <div class="parameter">
+                        <label>灵敏度 <span class="value" id="sensitivity_val">50</span></label>
+                        <input type="range" id="sensitivity" min="10" max="90" value="50">
+                    </div>
+                    <div class="parameter">
+                        <label>最小面积 <span class="value" id="min_area_val">500</span></label>
+                        <input type="range" id="min_area" min="100" max="5000" step="100" value="500">
+                    </div>
+                    <div class="parameter">
+                        <label>合并距离 <span class="value" id="merge_distance_val">20</span></label>
+                        <input type="range" id="merge_distance" min="0" max="100" step="5" value="20">
+                    </div>
+                </div>
+                
+                <!-- Canny Parameters -->
+                <div id="cannyParams" class="parameter-group hidden">
+                    <h3>Canny 参数</h3>
+                    <div class="parameter">
+                        <label>高斯模糊强度 <span class="value" id="gauss_sigma_val">1.0</span></label>
+                        <input type="range" id="gauss_sigma" min="0.5" max="5.0" step="0.1" value="1.0">
+                    </div>
+                    <div class="parameter">
+                        <label>模糊核大小 <span class="value" id="gauss_amount_val">5</span></label>
+                        <input type="range" id="gauss_amount" min="3" max="15" step="2" value="5">
+                    </div>
+                    <div class="parameter">
+                        <label>低阈值 <span class="value" id="threshold1_val">50</span></label>
+                        <input type="range" id="threshold1" min="30" max="150" value="50">
+                    </div>
+                    <div class="parameter">
+                        <label>高阈值 <span class="value" id="threshold2_val">150</span></label>
+                        <input type="range" id="threshold2" min="80" max="300" value="150">
+                    </div>
+                    <div class="parameter">
+                        <label>结构核宽度 <span class="value" id="struct_k1_val">3</span></label>
+                        <input type="range" id="struct_k1" min="3" max="9" step="2" value="3">
+                    </div>
+                    <div class="parameter">
+                        <label>结构核高度 <span class="value" id="struct_k2_val">3</span></label>
+                        <input type="range" id="struct_k2" min="3" max="9" step="2" value="3">
+                    </div>
+                    <div class="parameter">
+                        <label>闭运算次数 <span class="value" id="close_iter_val">1</span></label>
+                        <input type="range" id="close_iter" min="0" max="5" value="1">
+                    </div>
+                    <div class="parameter">
+                        <label>膨胀次数 <span class="value" id="dilate_iter_val">1</span></label>
+                        <input type="range" id="dilate_iter" min="0" max="5" value="1">
+                    </div>
+                    <div class="parameter">
+                        <label>最小面积 <span class="value" id="min_area_val">500</span></label>
+                        <input type="range" id="min_area" min="100" max="5000" step="100" value="500">
+                    </div>
+                    <div class="parameter">
+                        <label>合并距离 <span class="value" id="merge_distance_val">20</span></label>
+                        <input type="range" id="merge_distance" min="0" max="100" step="5" value="20">
+                    </div>
+                </div>
+                
+                <!-- Flood Parameters -->
+                <div id="floodParams" class="parameter-group hidden">
+                    <h3>泛洪填充参数</h3>
+                    <div class="parameter">
+                        <label>颜色容差 <span class="value" id="flood_tolerance_val">30</span></label>
+                        <input type="range" id="flood_tolerance" min="10" max="100" value="30">
+                    </div>
+                    <div class="parameter">
+                        <label>最小面积 <span class="value" id="min_area_val">100</span></label>
+                        <input type="range" id="min_area" min="10" max="1000" step="10" value="100">
+                    </div>
+                    <div class="parameter">
+                        <label>Padding <span class="value" id="padding_val">5</span></label>
+                        <input type="range" id="padding" min="0" max="20" value="5">
+                    </div>
+                </div>
+                
+                <!-- Alpha Parameters -->
+                <div id="alphaParams" class="parameter-group hidden">
+                    <h3>Alpha 通道参数</h3>
+                    <div class="parameter">
+                        <label>Alpha 阈值 <span class="value" id="alpha_threshold_val">30</span></label>
+                        <input type="range" id="alpha_threshold" min="0" max="255" value="30">
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="detectBtn" class="primary" disabled>🔍 开始检测</button>
+                    <button id="removeBgBtn" class="secondary" disabled>✂️ 去除背景</button>
+                    <button id="exportBtn" class="secondary" disabled>📦 导出 ZIP</button>
+                </div>
+                
+                <div class="parameter-group" style="margin-top: 20px;">
+                    <h3>抠图方法</h3>
+                    <div class="parameter">
+                        <select id="removalMethod">
+                            <option value="rembg">rembg AI 抠图</option>
+                            <option value="flood">泛洪填充抠图</option>
+                            <option value="combined">双重抠图（推荐）</option>
+                        </select>
+                    </div>
+                    <div class="parameter">
+                        <label>rembg 模型</label>
+                        <select id="rembgModel">
+                            <option value="u2net">u2net（通用）</option>
+                            <option value="u2netp">u2netp（轻量）</option>
+                            <option value="isnet-general-use">isnet（新版更准）</option>
+                            <option value="silueta">silueta（精细边缘）</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                <h2>检测结果 <span id="resultCount" style="font-weight: normal; color: #666;"></span></h2>
+                <div class="results-grid" id="resultsGrid">
+                    <!-- Results will be inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-text" id="statusText">就绪</div>
+            <div>
+                <span class="loading hidden" id="loading"></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for enlarged preview -->
+    <div id="modal" class="modal hidden">
+        <span class="modal-close" id="modalClose">&times;</span>
+        <img id="modalImage" src="" alt="放大预览">
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8001';
+        
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const canvasPreview = document.getElementById('canvasPreview');
+        const detectBtn = document.getElementById('detectBtn');
+        const removeBgBtn = document.getElementById('removeBgBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const resultCount = document.getElementById('resultCount');
+        const statusText = document.getElementById('statusText');
+        const loading = document.getElementById('loading');
+        const modal = document.getElementById('modal');
+        const modalImage = document.getElementById('modalImage');
+        const modalClose = document.getElementById('modalClose');
+        
+        // State
+        let currentImageId = null;
+        let detectionResults = [];
+        
+        // 防抖定时器
+        let detectTimer = null;
+        
+        // 实时检测函数
+        async function autoDetect() {
+            if (!currentImageId) return;
+            
+            // 清除之前的定时器
+            if (detectTimer) clearTimeout(detectTimer);
+            
+            // 设置新的定时器（300ms 防抖）
+            detectTimer = setTimeout(async () => {
+                await runDetection();
+            }, 300);
+        }
+        
+        // Parameter sliders - 实时更新数值并触发检测
+        const sliders = document.querySelectorAll('input[type="range"]');
+        sliders.forEach(slider => {
+            const valueSpan = document.getElementById(slider.id + '_val');
+            if (valueSpan) {
+                slider.addEventListener('input', () => {
+                    valueSpan.textContent = slider.value;
+                    autoDetect();
+                });
+            }
+        });
+        
+        // Detection method change
+        const detectionMethod = document.getElementById('detectionMethod');
+        detectionMethod.addEventListener('change', () => {
+            document.getElementById('smartParams').classList.toggle('hidden', detectionMethod.value !== 'smart');
+            document.getElementById('cannyParams').classList.toggle('hidden', detectionMethod.value !== 'canny');
+            document.getElementById('floodParams').classList.toggle('hidden', detectionMethod.value !== 'flood');
+            document.getElementById('alphaParams').classList.toggle('hidden', detectionMethod.value !== 'alpha');
+            autoDetect();
+        });
+        
+        // 预设方案
+        function applyPreset(preset) {
+            const presets = {
+                'general': { method: 'smart', smart_mode: 'auto', sensitivity: 50, min_area: 500, merge_distance: 20 },
+                'sticker': { method: 'smart', smart_mode: 'color', sensitivity: 60, min_area: 300, merge_distance: 30 },
+                'sprite': { method: 'canny', gauss_sigma: 1.0, gauss_amount: 5, threshold1: 50, threshold2: 150, struct_k1: 3, struct_k2: 3, close_iter: 2, dilate_iter: 2, min_area: 200, merge_distance: 15 },
+                'handdrawn': { method: 'smart', smart_mode: 'edge', sensitivity: 40, min_area: 800, merge_distance: 25 },
+                'solid': { method: 'flood', flood_tolerance: 50, min_area: 300, padding: 10 }
+            };
+            
+            const p = presets[preset];
+            if (!p) return;
+            
+            // 设置检测方法
+            document.getElementById('detectionMethod').value = p.method;
+            detectionMethod.dispatchEvent(new Event('change'));
+            
+            // 设置参数
+            for (const [key, value] of Object.entries(p)) {
+                if (key === 'method') continue;
+                const el = document.getElementById(key);
+                if (el) {
+                    el.value = value;
+                    const valEl = document.getElementById(key + '_val');
+                    if (valEl) valEl.textContent = value;
+                }
+            }
+            
+            autoDetect();
+        }
+        
+        // Upload area events
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadFile(file);
+        });
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) uploadFile(file);
+        });
+        
+        // Upload file
+        async function uploadFile(file) {
+            setStatus('上传中...', false);
+            loading.classList.remove('hidden');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('上传失败');
+                
+                const data = await response.json();
+                currentImageId = data.image_id;
+                
+                // Show preview
+                imagePreview.src = data.preview;
+                imagePreview.style.display = 'block';
+                uploadArea.style.display = 'none';
+                
+                // Enable buttons
+                detectBtn.disabled = false;
+                
+                setStatus(`上传成功: ${data.filename} (${data.width}x${data.height})`, true);
+                
+                // 自动触发第一次检测
+                setTimeout(() => runDetection(), 100);
+            } catch (error) {
+                setStatus(`上传失败: ${error.message}`, false, true);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+        
+        // 检测函数（供按钮和实时检测调用）
+        let isDetecting = false;
+        async function runDetection() {
+            if (!currentImageId || isDetecting) return;
+            
+            isDetecting = true;
+            setStatus('检测中...', false);
+            
+            const formData = new FormData();
+            formData.append('image_id', currentImageId);
+            formData.append('method', detectionMethod.value);
+            
+            // Add parameters based on method
+            if (detectionMethod.value === 'smart') {
+                formData.append('smart_mode', document.getElementById('smart_mode').value);
+                formData.append('sensitivity', document.getElementById('sensitivity').value);
+                formData.append('min_area', document.getElementById('min_area').value);
+                formData.append('merge_distance', document.getElementById('merge_distance').value);
+            } else if (detectionMethod.value === 'canny') {
+                formData.append('gauss_sigma', document.getElementById('gauss_sigma').value);
+                formData.append('gauss_amount', document.getElementById('gauss_amount').value);
+                formData.append('threshold1', document.getElementById('threshold1').value);
+                formData.append('threshold2', document.getElementById('threshold2').value);
+                formData.append('struct_k1', document.getElementById('struct_k1').value);
+                formData.append('struct_k2', document.getElementById('struct_k2').value);
+                formData.append('close_iter', document.getElementById('close_iter').value);
+                formData.append('dilate_iter', document.getElementById('dilate_iter').value);
+                formData.append('min_area', document.getElementById('min_area').value);
+                formData.append('merge_distance', document.getElementById('merge_distance').value);
+            } else if (detectionMethod.value === 'flood') {
+                formData.append('flood_tolerance', document.getElementById('flood_tolerance').value);
+                formData.append('min_area', document.getElementById('min_area').value);
+                formData.append('padding', document.getElementById('padding').value);
+            } else if (detectionMethod.value === 'alpha') {
+                formData.append('alpha_threshold', document.getElementById('alpha_threshold').value);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/detect`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('检测失败');
+                
+                const data = await response.json();
+                detectionResults = data.bboxes;
+                
+                // Update preview
+                imagePreview.src = data.preview;
+                
+                // Update results grid with element previews
+                updateResultsGrid(data.elements || []);
+                
+                // Enable buttons
+                removeBgBtn.disabled = false;
+                exportBtn.disabled = false;
+                detectBtn.disabled = false;
+                
+                setStatus(`检测完成，找到 ${data.count} 个元素`, true);
+            } catch (error) {
+                setStatus(`检测失败: ${error.message}`, false, true);
+            } finally {
+                isDetecting = false;
+            }
+        }
+        
+        // Detect elements - 按钮点击
+        detectBtn.addEventListener('click', () => runDetection());
+        
+        // Update results grid
+        function updateResultsGrid(elements) {
+            resultsGrid.innerHTML = '';
+            resultCount.textContent = `(${elements.length} 个)`;
+            
+            elements.forEach((el, index) => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <img src="${el.preview}" alt="元素 ${el.index}" style="max-width: 100%; max-height: 100px; object-fit: contain;">
+                    <div class="label">元素 ${el.index}</div>
+                    <div class="label" style="font-size: 11px; color: #999;">${el.bbox[2]}x${el.bbox[3]}</div>
+                `;
+                card.addEventListener('click', () => {
+                    // Show enlarged preview
+                    modalImage.src = el.preview;
+                    modal.classList.remove('hidden');
+                });
+                resultsGrid.appendChild(card);
+            });
+        }
+        
+        // Show element preview (placeholder - would need actual cropped image)
+        function showElementPreview(index) {
+            // This would show the actual cropped element
+            // For now, just show a placeholder
+            alert(`显示元素 ${index + 1} 的放大预览`);
+        }
+        
+        // Remove background
+        removeBgBtn.addEventListener('click', async () => {
+            if (!currentImageId) return;
+            
+            setStatus('去除背景中...', false);
+            loading.classList.remove('hidden');
+            removeBgBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('image_id', currentImageId);
+            formData.append('method', document.getElementById('removalMethod').value);
+            formData.append('model', document.getElementById('rembgModel').value);
+            formData.append('flood_tolerance', document.getElementById('flood_tolerance').value);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/remove_background`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('去除背景失败');
+                
+                const data = await response.json();
+                
+                // Update results grid with processed images
+                updateResultsGridWithProcessed(data.results);
+                
+                setStatus(`背景去除完成，处理了 ${data.count} 个元素`, true);
+            } catch (error) {
+                setStatus(`去除背景失败: ${error.message}`, false, true);
+            } finally {
+                loading.classList.add('hidden');
+                removeBgBtn.disabled = false;
+            }
+        });
+        
+        // Update results grid with processed images
+        function updateResultsGridWithProcessed(results) {
+            resultsGrid.innerHTML = '';
+            
+            results.forEach((result, index) => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <img src="${result.preview}" alt="元素 ${result.index}">
+                    <div class="label">元素 ${result.index}</div>
+                    <div class="label" style="font-size: 11px; color: #999;">${result.width}x${result.height}</div>
+                `;
+                card.addEventListener('click', () => {
+                    // Show enlarged preview
+                    modalImage.src = result.preview;
+                    modal.classList.remove('hidden');
+                });
+                resultsGrid.appendChild(card);
+            });
+        }
+        
+        // Export ZIP
+        exportBtn.addEventListener('click', async () => {
+            if (!currentImageId) return;
+            
+            setStatus('导出中...', false);
+            loading.classList.remove('hidden');
+            exportBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('image_id', currentImageId);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/export`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('导出失败');
+                
+                // Download ZIP
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'elements.zip';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                
+                setStatus('导出完成', true);
+            } catch (error) {
+                setStatus(`导出失败: ${error.message}`, false, true);
+            } finally {
+                loading.classList.add('hidden');
+                exportBtn.disabled = false;
+            }
+        });
+        
+        // Modal close
+        modalClose.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        // Set status
+        function setStatus(text, success = false, error = false) {
+            statusText.textContent = text;
+            statusText.className = 'status-text';
+            if (success) statusText.classList.add('success');
+            if (error) statusText.classList.add('error');
+        }
+    </script>
+</body>
+</html>
