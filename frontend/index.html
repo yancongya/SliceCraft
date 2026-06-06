@@ -97,7 +97,53 @@
         /* ============ 面板布局 ============ */
         .layout { display: flex; flex: 1; overflow: hidden; }
         
-        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        
+        /* 侧栏宽度拖拽手柄 */
+        .sidebar-resize {
+            position: absolute;
+            left: -4px;
+            top: 0; bottom: 0;
+            width: 8px;
+            cursor: ew-resize;
+            z-index: 10;
+        }
+        .sidebar-resize::after {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 36px;
+            border-radius: 2px;
+            background: var(--border);
+            transition: background 0.15s;
+        }
+        .sidebar-resize:hover::after { background: var(--accent); }
+        
+        /* 底栏高度拖拽手柄 */
+        .bar-resize {
+            position: absolute;
+            top: -4px;
+            left: 0; right: 0;
+            height: 8px;
+            cursor: ns-resize;
+            z-index: 10;
+        }
+        .bar-resize::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 3px;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border);
+            transition: background 0.15s;
+        }
+        .bar-resize:hover::after { background: var(--accent); }
         
         .sidebar {
             width: 280px;
@@ -105,6 +151,7 @@
             border-left: 1px solid var(--border);
             display: flex;
             flex-direction: column;
+            position: relative;
             flex-shrink: 0;
             overflow-y: auto;
         }
@@ -173,31 +220,8 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            transition: height 0.1s ease;
+            min-height: 80px;
         }
-        
-        /* 拖拽手柄 */
-        .resize-handle {
-            position: absolute;
-            top: -5px;
-            left: 0; right: 0;
-            height: 10px;
-            cursor: ns-resize;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .resize-handle::after {
-            content: '';
-            width: 36px; height: 4px;
-            border-radius: 2px;
-            background: var(--border);
-            transition: background 0.15s;
-        }
-        
-        .resize-handle:hover::after { background: var(--accent); }
         
         .elements-header {
             height: 36px;
@@ -234,23 +258,22 @@
             position: relative;
         }
         
-        /* 单行模式 */
+        /* 单行模式 - 横向滚动 */
         .elements-container.single-row {
             display: flex;
             gap: 8px;
             overflow-x: auto;
             overflow-y: hidden;
             flex-wrap: nowrap;
-            position: relative;
+            align-items: center;
         }
         
-        /* 多行模式 */
+        /* 多行模式 - 自适应网格 */
         .elements-container.multi-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--card-size, 64px), 1fr));
             gap: 8px;
-            flex-wrap: wrap;
-            align-content: flex-start;
-            position: relative;
+            align-content: start;
         }
         
         /* 自定义滚动条 */
@@ -261,7 +284,7 @@
         
         /* 元素卡片 */
         .elem-card {
-            width: 64px; height: 64px;
+            width: 72px; height: 72px;
             border-radius: 6px;
             border: 2px solid var(--border);
             overflow: hidden;
@@ -269,6 +292,9 @@
             flex-shrink: 0;
             position: relative;
             transition: border-color 0.15s;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .elem-card:hover { border-color: var(--accent); }
@@ -417,6 +443,7 @@
             z-index: 1000; backdrop-filter: blur(4px);
         }
         .modal.active { display: flex; }
+        .modal.active { display: flex; }
         .modal-body { position: relative; max-width: 90vw; max-height: 90vh; }
         .modal-body img { max-width: 100%; max-height: 90vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         .modal-close {
@@ -455,7 +482,7 @@
             <div class="panel active" id="panel-split">
                 <div class="layout">
                     <div class="content">
-                        <div class="preview" id="splitPreview" onselectstart="return false">
+                        <div class="preview" id="splitPreview" onselectstart="return false" style="flex: 6;">
                             <div class="upload" id="uploadZone">
                                 <div class="upload-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -467,8 +494,8 @@
                             <img id="splitImage" class="hidden" draggable="false">
                             <div class="marquee" id="marquee"></div>
                         </div>
-                        <div class="elements-bar hidden" id="splitBar" style="height: 100px;">
-                            <div class="resize-handle" id="resizeHandle"></div>
+                        <div class="elements-bar hidden" id="splitBar" style="flex: 3;">
+                            <div class="bar-resize"></div>
                             <div class="elements-header">
                                 <span class="elements-title">检测到的元素</span>
                                 <div class="elements-actions">
@@ -485,6 +512,7 @@
                         </div>
                     </div>
                     <div class="sidebar">
+                        <div class="sidebar-resize"></div>
                         <div class="section">
                             <div class="section-title">检测方法</div>
                             <select class="select" id="detectMethod">
@@ -541,6 +569,14 @@
                             <div class="field"><div class="field-head"><span class="field-label">最小面积</span><span class="field-value" id="v_minArea">500</span></div><input type="range" class="range" id="minArea" min="100" max="5000" step="100" value="500"></div>
                             <div class="field"><div class="field-head"><span class="field-label">合并距离</span><span class="field-value" id="v_mergeDist">20</span></div><input type="range" class="range" id="mergeDist" min="0" max="100" step="5" value="20"></div>
                         </div>
+                        <div class="section">
+                            <div class="section-title">元素后处理</div>
+                            <div class="field">
+                                <div class="field-head"><span class="field-label">边距 Padding</span><span class="field-value" id="v_padding">0</span></div>
+                                <input type="range" class="range" id="padding" min="-50" max="50" value="0">
+                            </div>
+                            <div style="font-size:11px;color:var(--text-3);margin-top:4px;">正值增加边距，负值裁切更多</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -557,8 +593,8 @@
                             </div>
                             <div class="results hidden" id="removeResults"></div>
                         </div>
-                        <div class="elements-bar hidden" id="removeBar" style="height: 100px;">
-                            <div class="resize-handle" id="resizeHandle2"></div>
+                        <div class="elements-bar hidden" id="removeBar" style="flex: 3;">
+                            <div class="bar-resize"></div>
                             <div class="elements-header">
                                 <span class="elements-title">待处理元素</span>
                                 <div class="elements-actions">
@@ -571,6 +607,7 @@
                         </div>
                     </div>
                     <div class="sidebar">
+                        <div class="sidebar-resize"></div>
                         <div class="section">
                             <div class="section-title">抠图方法</div>
                             <select class="select" id="removeMethod">
@@ -609,7 +646,7 @@
         
         <footer class="statusbar">
             <div class="status-left"><span class="dot" id="dot"></span><span id="statusText">就绪</span></div>
-            <span id="statusHint">拖拽边缘调节高度 · 点击预览 · 框选：拖拽空白区域 · 减选：Alt+拖拽</span>
+            <span id="statusHint">点击预览 · 框选：拖拽元素条空白区域 · 减选：Alt+拖拽</span>
         </footer>
     </div>
     
@@ -633,9 +670,9 @@
         // 阻止全局的拖拽和选择行为
         document.addEventListener('dragstart', e => e.preventDefault());
         
-        // 在预览和元素区域阻止文本选择
+        // 在预览区域阻止文本选择（不阻止元素卡片的双击）
         document.addEventListener('selectstart', e => {
-            if (e.target.closest('.preview') || e.target.closest('.elements-container')) {
+            if (e.target.closest('.preview') && !e.target.closest('.elem-card')) {
                 e.preventDefault();
                 return false;
             }
@@ -672,27 +709,83 @@
         });
         
         // ============ Modal ============
-        function openModal(src) { $('modalImg').src = src; show($('modal')); }
-        function closeModal() { hide($('modal')); }
+        function openModal(src) { $('modalImg').src = src; $('modal').classList.add('active'); }
+        function closeModal() { $('modal').classList.remove('active'); }
         $('modalClose').addEventListener('click', closeModal);
         $('modal').addEventListener('click', e => { if (e.target === $('modal')) closeModal(); });
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
         
-        // ============ 高度调节 ============
-        function initResize(handleId, barId) {
-            const handle = $(handleId);
-            const bar = $(barId);
-            let startY, startH;
+        // 元素条布局
+        function updateElementsLayout() {
+            document.querySelectorAll('.elements-bar').forEach(bar => {
+                const container = bar.querySelector('.elements-container');
+                if (!container) return;
+                const h = bar.offsetHeight;
+                const w = container.offsetWidth;
+                
+                if (h > 120) {
+                    // 多行模式 - 计算最优卡片大小
+                    container.className = 'elements-container multi-row';
+                    const count = container.children.length;
+                    if (count > 0) {
+                        // 计算能放多少列，然后确定卡片大小
+                        const gap = 8;
+                        const padding = 32;
+                        const availableWidth = w - padding;
+                        const minCardSize = 56;
+                        const maxCardSize = 120;
+                        
+                        // 计算列数
+                        let cols = Math.floor((availableWidth + gap) / (minCardSize + gap));
+                        cols = Math.max(1, cols);
+                        
+                        // 计算卡片大小
+                        let cardSize = Math.floor((availableWidth - (cols - 1) * gap) / cols);
+                        cardSize = Math.min(maxCardSize, Math.max(minCardSize, cardSize));
+                        
+                        container.style.setProperty('--card-size', cardSize + 'px');
+                        
+                        // 更新卡片大小
+                        container.querySelectorAll('.elem-card').forEach(card => {
+                            card.style.width = cardSize + 'px';
+                            card.style.height = cardSize + 'px';
+                        });
+                    }
+                } else {
+                    // 单行模式
+                    container.className = 'elements-container single-row';
+                    container.style.removeProperty('--card-size');
+                    container.querySelectorAll('.elem-card').forEach(card => {
+                        card.style.width = '64px';
+                        card.style.height = '64px';
+                    });
+                }
+            });
+        }
+        
+        // 监听窗口大小变化
+        window.addEventListener('resize', updateElementsLayout);
+        
+        // 使用 ResizeObserver 监听容器大小变化
+        const resizeObserver = new ResizeObserver(() => {
+            updateElementsLayout();
+        });
+        
+        // ============ 拖拽调节 ============
+        // 侧栏宽度拖拽
+        document.querySelectorAll('.sidebar-resize').forEach(handle => {
+            const sidebar = handle.parentElement;
+            let startX, startWidth;
             
             handle.addEventListener('mousedown', e => {
                 e.preventDefault();
-                startY = e.clientY;
-                startH = bar.offsetHeight;
+                startX = e.clientX;
+                startWidth = sidebar.offsetWidth;
                 
                 const onMove = e => {
-                    const h = Math.min(400, Math.max(60, startH + (startY - e.clientY)));
-                    bar.style.height = h + 'px';
-                    updateLayout(bar);
+                    const delta = startX - e.clientX;
+                    const newWidth = Math.min(400, Math.max(200, startWidth + delta));
+                    sidebar.style.width = newWidth + 'px';
                 };
                 
                 const onUp = () => {
@@ -703,21 +796,41 @@
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
             });
-        }
+        });
         
-        function updateLayout(bar) {
-            const container = bar.querySelector('.elements-container');
-            if (!container) return;
-            const h = bar.offsetHeight;
-            if (h > 120) {
-                container.className = 'elements-container multi-row';
-            } else {
-                container.className = 'elements-container single-row';
-            }
-        }
-        
-        initResize('resizeHandle', 'splitBar');
-        initResize('resizeHandle2', 'removeBar');
+        // 底栏高度拖拽
+        document.querySelectorAll('.bar-resize').forEach(handle => {
+            const bar = handle.parentElement;
+            let startY, startFlex;
+            
+            handle.addEventListener('mousedown', e => {
+                e.preventDefault();
+                startY = e.clientY;
+                startFlex = parseFloat(bar.style.flex) || 4;
+                const parentHeight = bar.parentElement.offsetHeight;
+                const startPixel = (startFlex / 10) * parentHeight;
+                
+                const onMove = e => {
+                    const delta = startY - e.clientY;
+                    const newPixel = Math.min(parentHeight * 0.7, Math.max(60, startPixel + delta));
+                    const contentFlex = parseFloat(bar.previousElementSibling?.style.flex) || 6;
+                    const newFlex = (newPixel / parentHeight) * 10;
+                    bar.style.flex = newFlex;
+                    if (bar.previousElementSibling) {
+                        bar.previousElementSibling.style.flex = 10 - newFlex;
+                    }
+                    updateElementsLayout();
+                };
+                
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                };
+                
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        });
         
         // ============ 框选 ============
         function initMarquee(previewId, elementsKey) {
@@ -934,6 +1047,9 @@
             fd.append('image_id', state.splitImageId);
             fd.append('method', method);
             
+            // 通用参数
+            fd.append('crop_padding', $('padding').value);
+            
             if (method === 'smart') {
                 fd.append('smart_mode', $('smartMode').value);
                 fd.append('sensitivity', $('sensitivity').value);
@@ -978,6 +1094,7 @@
                 div.dataset.index = el.index;
                 div.innerHTML = '<img src="' + el.preview + '"><span class="num">' + el.index + '</span>';
                 div.addEventListener('click', e => {
+                    console.log('click on element', el.index);
                     if (e.shiftKey) { el.selected = true; }
                     else { el.selected = !el.selected; }
                     div.classList.toggle('selected', el.selected);
@@ -988,6 +1105,7 @@
             });
             
             updateBadges();
+            updateElementsLayout();
         }
         
         $('selectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = true); renderSplitElements(); });
@@ -996,7 +1114,15 @@
         $('sendBtn').addEventListener('click', () => {
             const sel = state.splitElements.filter(e => e.selected);
             if (!sel.length) { setStatus('请先选择元素', false, true); return; }
-            state.removeElements = sel.map(el => ({ index: el.index, preview: el.preview, selected: true, processed: false, result: null }));
+            
+            state.removeElements = sel.map(el => ({
+                index: el.index,
+                preview: el.preview,
+                selected: true,
+                processed: false,
+                result: null
+            }));
+            
             renderRemoveElements();
             document.querySelector('.tab[data-panel="remove"]').click();
             setStatus('已发送 ' + sel.length + ' 个元素');
@@ -1053,6 +1179,7 @@
             
             renderRemoveResults();
             updateBadges();
+            updateElementsLayout();
         }
         
         function renderRemoveResults() {
@@ -1208,6 +1335,11 @@
         // 初始化元素条框选
         initElementsMarquee('splitList', 'splitElements');
         initElementsMarquee('removeList', 'removeElements');
+        
+        // 启动 ResizeObserver
+        document.querySelectorAll('.elements-container').forEach(el => {
+            resizeObserver.observe(el);
+        });
     </script>
 </body>
 </html>

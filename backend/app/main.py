@@ -81,9 +81,11 @@ async def detect_elements(
     merge_distance: int = Form(20),
     # Flood parameters
     flood_tolerance: int = Form(30),
-    padding: int = Form(5),
+    flood_padding: int = Form(5),
     # Alpha parameters
     alpha_threshold: int = Form(30),
+    # Crop parameters
+    crop_padding: int = Form(0),
 ):
     """Detect elements using specified method."""
     if image_id not in uploaded_images:
@@ -102,7 +104,7 @@ async def detect_elements(
         )
     elif method == "flood":
         contours, bboxes = flood.detect(
-            img, flood_tolerance, min_area, padding
+            img, flood_tolerance, min_area, flood_padding
         )
     elif method == "alpha":
         contours, bboxes = alpha.detect(img, alpha_threshold)
@@ -131,15 +133,22 @@ async def detect_elements(
     _, buffer = cv2.imencode('.png', preview_img)
     preview_b64 = base64.b64encode(buffer).decode('utf-8')
     
-    # 生成每个元素的裁切预览
+    # 生成每个元素的裁切预览（应用 crop_padding）
+    img_h, img_w = img.shape[:2]
     elements = []
     for i, (x, y, w, h) in enumerate(bboxes):
-        cropped = img[y:y+h, x:x+w]
+        # 应用 padding
+        x1 = max(0, x - crop_padding)
+        y1 = max(0, y - crop_padding)
+        x2 = min(img_w, x + w + crop_padding)
+        y2 = min(img_h, y + h + crop_padding)
+        
+        cropped = img[y1:y2, x1:x2]
         _, crop_buffer = cv2.imencode('.png', cropped)
         crop_b64 = base64.b64encode(crop_buffer).decode('utf-8')
         elements.append({
             "index": i + 1,
-            "bbox": [x, y, w, h],
+            "bbox": [x1, y1, x2 - x1, y2 - y1],
             "preview": f"data:image/png;base64,{crop_b64}"
         })
     
