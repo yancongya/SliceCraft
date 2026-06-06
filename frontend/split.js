@@ -26,6 +26,7 @@
                 if (!res.ok) throw new Error('上传失败');
                 const data = await res.json();
                 state.splitImageId = data.image_id;
+                state.splitImageSize = { w: data.width, h: data.height };
                 $('splitImage').src = data.preview;
                 show($('splitImage')); hide($('uploadZone'));
                 $('toolbar').style.display = 'flex';
@@ -182,6 +183,117 @@
         
         $('selectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = true); renderSplitElements(); });
         $('deselectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = false); renderSplitElements(); });
+        
+        // 切分导出 - 下拉菜单
+        $('splitExport').addEventListener('click', e => {
+            e.stopPropagation();
+            $('splitExportMenu').classList.toggle('hidden');
+        });
+        document.addEventListener('click', () => hide($('splitExportMenu')));
+        
+        // 选择 PSD 时显示布局选项
+        $('splitExportMenu').addEventListener('click', async e => {
+            const btn = e.target.closest('button[data-format]');
+            if (!btn) return;
+            hide($('splitExportMenu'));
+            const format = btn.dataset.format;
+            
+            // PSD 时显示布局选项
+            $('splitPsdLayout').classList.toggle('hidden', format !== 'psd');
+            
+            await doExport('split', format);
+        });
+        
+        async function doExport(panel, format) {
+            let source;
+            if (panel === 'remove') {
+                // 抠图 tab 只导出已处理的
+                source = state.removeElements.filter(e => e.processed);
+            } else {
+                const selected = state.splitElements.filter(e => e.selected);
+                source = selected.length ? selected : state.splitElements;
+            }
+            
+            if (!source.length) { showToast('没有可导出的元素', 'error'); return; }
+            
+            // 超过 3 个确认
+            if (source.length > 3) {
+                const ok = await showDialog('导出确认', `即将导出 ${source.length} 个元素，是否继续？`);
+                if (!ok) return;
+            }
+            
+            const imgKey = panel === 'remove' ? 'result' : 'preview';
+            
+            if (format === 'png') {
+                // 单个 PNG
+                for (const el of source) {
+                    const a = document.createElement('a');
+                    a.href = el[imgKey];
+                    a.download = 'element_' + el.index + '.png';
+                    a.click();
+                    await new Promise(r => setTimeout(r, 200));
+                }
+                showToast('已导出 ' + source.length + ' 个 PNG', 'success');
+            } else if (format === 'zip') {
+                // ZIP
+                showToast('正在打包...', '');
+                const elementsData = source.map(el => ({
+                    name: 'element_' + el.index + '.png',
+                    base64: el[imgKey]
+                }));
+                const fd = new FormData();
+                fd.append('elements_json', JSON.stringify(elementsData));
+                const resp = await fetch(API + '/api/export_zip_from_elements', { method: 'POST', body: fd });
+                if (!resp.ok) { showToast('导出失败', 'error'); return; }
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'elements.zip'; a.click();
+                URL.revokeObjectURL(url);
+                showToast('已导出 ZIP', 'success');
+            } else if (format === 'psd') {
+                // PSD
+                showToast('正在生成 PSD...', '');
+                const posMode = panel === 'split'
+                    ? document.querySelector('input[name="splitPsdPos"]:checked')?.value
+                    : document.querySelector('input[name="removePsdPos"]:checked')?.value;
+                const useBbox = posMode === 'bbox';
+                
+                const elementsData = source.map(el => ({
+                    name: 'Element ' + el.index,
+                    base64: el[imgKey],
+                    x: useBbox ? (el.bbox ? el.bbox[0] : 0) : 0,
+                    y: useBbox ? (el.bbox ? el.bbox[1] : 0) : 0
+                }));
+                
+                // 获取画布尺寸
+                let canvasW, canvasH;
+                if (panel === 'split' && useBbox && state.splitImageSize) {
+                    // 切分 tab 用原图尺寸
+                    canvasW = state.splitImageSize.w;
+                    canvasH = state.splitImageSize.h;
+                } else {
+                    // 抠图 tab 或左上对齐：用第一张图尺寸
+                    const firstImg = new Image();
+                    firstImg.src = source[0][imgKey];
+                    await new Promise(r => firstImg.onload = r);
+                    canvasW = firstImg.naturalWidth;
+                    canvasH = firstImg.naturalHeight;
+                }
+                
+                const fd = new FormData();
+                fd.append('elements_json', JSON.stringify(elementsData));
+                fd.append('canvas_width', canvasW);
+                fd.append('canvas_height', canvasH);
+                const resp = await fetch(API + '/api/export_psd_from_elements', { method: 'POST', body: fd });
+                if (!resp.ok) { showToast('导出失败', 'error'); return; }
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'elements.psd'; a.click();
+                URL.revokeObjectURL(url);
+                showToast('已导出 PSD', 'success');
+            }
+        }
+        window.doExport = doExport;
         
         $('sendBtn').addEventListener('click', () => {
             const sel = state.splitElements.filter(e => e.selected);

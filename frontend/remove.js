@@ -50,20 +50,55 @@
             updateCanvasCursor();
         }
         
-        // 眼睛功能 - 按住查看原图，松开显示抠图结果
+        // 眼睛功能 - 按住查看原图，松开显示抠图结果（保持缩放状态）
         let showingOriginal = false;
+        let savedScale = 1, savedOffsetX = 0, savedOffsetY = 0;
+        
         function showOriginal() {
             if (!canvasState.currentElement?.processed || showingOriginal) return;
             showingOriginal = true;
             $('eyeBtn')?.classList.add('active');
-            showOnCanvas(canvasState.currentElement.preview, canvasState.currentElement);
+            
+            // 保存当前缩放状态
+            savedScale = canvasState.scale;
+            savedOffsetX = canvasState.offsetX;
+            savedOffsetY = canvasState.offsetY;
+            
+            // 加载原图但保持缩放
+            const img = new Image();
+            img.onload = () => {
+                const canvas = $('removeCanvas');
+                if (!canvas) return;
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.style.width = img.width + 'px';
+                canvas.style.height = img.height + 'px';
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0);
+                canvas.style.transform = `translate(calc(-50% + ${savedOffsetX}px), calc(-50% + ${savedOffsetY}px)) scale(${savedScale})`;
+            };
+            img.src = canvasState.currentElement.preview;
         }
+        
         function hideOriginal() {
             if (!showingOriginal) return;
             showingOriginal = false;
             $('eyeBtn')?.classList.remove('active');
             if (canvasState.currentElement) {
-                showOnCanvas(canvasState.currentElement.result, canvasState.currentElement);
+                // 恢复抠图结果，保持缩放状态
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = $('removeCanvas');
+                    if (!canvas) return;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.style.width = img.width + 'px';
+                    canvas.style.height = img.height + 'px';
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(img, 0, 0);
+                    canvas.style.transform = `translate(calc(-50% + ${savedOffsetX}px), calc(-50% + ${savedOffsetY}px)) scale(${savedScale})`;
+                };
+                img.src = canvasState.currentElement.result;
             }
         }
         $('eyeBtn')?.addEventListener('mousedown', showOriginal);
@@ -74,35 +109,109 @@
         
         // 橡皮擦功能
         let isErasing = false;
+        let eraserMode = 'erase'; // 'erase' or 'restore'
         let eraserSize = 20;
+        let originalImageData = null; // 保存原始图片数据用于恢复
+        
         $('eraserBtn')?.addEventListener('click', () => {
             isErasing = !isErasing;
+            if (isErasing) {
+                // 切换模式：擦除 <-> 恢复
+                eraserMode = eraserMode === 'erase' ? 'restore' : 'erase';
+                $('eraserModeLabel').textContent = eraserMode === 'erase' ? '擦除' : '恢复';
+            }
             $('eraserBtn').classList.toggle('active', isErasing);
             updateCanvasCursor();
+            // 保存原始图片用于恢复
+            if (isErasing) saveOriginalImage();
         });
+        
+        // 右键切换模式
+        $('canvasContainer')?.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            if (isErasing) {
+                eraserMode = eraserMode === 'erase' ? 'restore' : 'erase';
+                $('eraserModeLabel').textContent = eraserMode === 'erase' ? '擦除' : '恢复';
+                updateCanvasCursor();
+            }
+        });
+        
         $('eraserSize')?.addEventListener('input', e => { eraserSize = parseInt(e.target.value); });
+        
         function updateCanvasCursor() {
             const container = $('canvasContainer');
             if (!container) return;
             if (isErasing) {
-                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${eraserSize}" height="${eraserSize}" viewBox="0 0 ${eraserSize} ${eraserSize}"><circle cx="${eraserSize/2}" cy="${eraserSize/2}" r="${eraserSize/2 - 1}" fill="none" stroke="red" stroke-width="1.5"/></svg>`;
+                const color = eraserMode === 'erase' ? 'red' : 'green';
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${eraserSize}" height="${eraserSize}" viewBox="0 0 ${eraserSize} ${eraserSize}"><circle cx="${eraserSize/2}" cy="${eraserSize/2}" r="${eraserSize/2 - 1}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
                 container.style.cursor = `url('data:image/svg+xml;base64,${btoa(svg)}') ${eraserSize/2} ${eraserSize/2}, crosshair`;
             } else {
                 container.style.cursor = 'grab';
             }
         }
+        
+        // 保存原始图片数据（使用抠图结果作为"原始"数据，用于恢复）
+        function saveOriginalImage() {
+            if (!canvasState.currentElement) return;
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0);
+                originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            };
+            img.src = canvasState.currentElement.result || canvasState.currentElement.preview;
+        }
+        
         function eraseAtPosition(x, y) {
             if (!canvasState.currentElement) return;
             const canvas = $('removeCanvas');
             if (!canvas) return;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
             const radius = eraserSize / 2 / canvasState.scale;
-            ctx.save();
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            
+            if (eraserMode === 'erase') {
+                // 擦除模式
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } else {
+                // 恢复模式：从原始图片恢复
+                if (!originalImageData) saveOriginalImage();
+                if (!originalImageData) return;
+                
+                const cx = Math.round(x);
+                const cy = Math.round(y);
+                const r = Math.round(radius);
+                
+                // 获取当前图片数据
+                const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // 在圆形区域内恢复原始像素
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        if (dx*dx + dy*dy <= r*r) {
+                            const px = cx + dx;
+                            const py = cy + dy;
+                            if (px >= 0 && px < canvas.width && py >= 0 && py < canvas.height) {
+                                const idx = (py * canvas.width + px) * 4;
+                                currentData.data[idx] = originalImageData.data[idx];
+                                currentData.data[idx+1] = originalImageData.data[idx+1];
+                                currentData.data[idx+2] = originalImageData.data[idx+2];
+                                currentData.data[idx+3] = originalImageData.data[idx+3];
+                            }
+                        }
+                    }
+                }
+                
+                ctx.putImageData(currentData, 0, 0);
+            }
+            
             canvasState.currentElement.result = canvas.toDataURL('image/png');
         }
         
@@ -176,7 +285,7 @@
             const canvas = $('removeCanvas');
             if (!canvas) return;
             
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
             // 清除画布为透明
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // 确保 canvas 背景透明
@@ -219,6 +328,20 @@
         let isErasingActive = false;
         $('canvasContainer')?.addEventListener('mousedown', e => {
             if (e.target.closest('.toolbar')) return;
+            
+            // 吸管取色模式
+            if (canvasState.isColorPickMode) {
+                const canvas = $('removeCanvas');
+                if (canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = Math.round((e.clientX - rect.left) / canvasState.scale);
+                    const y = Math.round((e.clientY - rect.top) / canvasState.scale);
+                    // 触发吸管抠图
+                    pickColorAndRemove(x, y);
+                }
+                return;
+            }
+            
             // 空格键或非橡皮擦模式：拖拽
             if (canvasState.tempDrag || !isErasing) {
                 canvasState.isDragging = true;
@@ -282,17 +405,19 @@
         
         $('removeMethod').addEventListener('change', e => {
             const m = e.target.value;
-            $('secRembg').classList.toggle('hidden', m !== 'rembg' && m !== 'combined');
-            $('secRemFlood').classList.toggle('hidden', m !== 'flood' && m !== 'combined');
+            $('secRembg').classList.toggle('hidden', m === 'flood' || m === 'color_pick');
+            $('secRemFlood').classList.toggle('hidden', m !== 'flood' && m !== 'combined' && m !== 'color_pick');
+            // 吸管取色模式
+            if (m === 'color_pick') {
+                canvasState.isColorPickMode = true;
+                $('canvasContainer').style.cursor = 'crosshair';
+            } else {
+                canvasState.isColorPickMode = false;
+                if (!isErasing) $('canvasContainer').style.cursor = 'grab';
+            }
         });
         
         $('remFloodTol').addEventListener('input', e => $('v_remFloodTol').textContent = e.target.value);
-        
-        // 边缘优化滑块
-        $('feather').addEventListener('input', e => $('v_feather').textContent = e.target.value);
-        $('smooth').addEventListener('input', e => $('v_smooth').textContent = e.target.value);
-        $('fillHoles').addEventListener('input', e => $('v_fillHoles').textContent = e.target.value);
-        $('removeNoise').addEventListener('input', e => $('v_removeNoise').textContent = e.target.value);
         
         function renderRemoveElements() {
             const has = state.removeElements.length > 0;
@@ -356,7 +481,47 @@
                 card.addEventListener('click', () => openModal(el.result));
                 grid.appendChild(card);
             });
-            $('exportBtn').disabled = false;
+            $('removeExport').disabled = false;
+        }
+        
+        // 吸管取色抠图
+        async function pickColorAndRemove(x, y) {
+            const cur = canvasState.currentElement;
+            if (!cur || !cur.processed) { setStatus('请先抠图再使用吸管', false, true); return; }
+            
+            setStatus('吸管抠图中...', true);
+            
+            try {
+                // 重新上传当前元素
+                const blob = await fetch(cur.preview).then(r => r.blob());
+                const fd = new FormData(); fd.append('file', blob, 'el.png');
+                const up = await (await fetch(API + '/api/upload', { method: 'POST', body: fd })).json();
+                
+                // 检测
+                const df = new FormData();
+                df.append('image_id', up.image_id); df.append('method', 'alpha'); df.append('alpha_threshold', '0');
+                await fetch(API + '/api/detect', { method: 'POST', body: df });
+                
+                // 吸管抠图
+                const rf = new FormData();
+                rf.append('image_id', up.image_id);
+                rf.append('method', 'color_pick');
+                rf.append('flood_tolerance', $('remFloodTol').value);
+                rf.append('click_x', x);
+                rf.append('click_y', y);
+                const rd = await (await fetch(API + '/api/remove_background', { method: 'POST', body: rf })).json();
+                
+                if (rd.results?.[0]) {
+                    cur.processed = true;
+                    cur.result = rd.results[0].preview;
+                    showOnCanvas(cur.result, cur);
+                    renderRemoveElements();
+                    setStatus('吸管抠图完成');
+                }
+            } catch (err) {
+                console.error('吸管抠图失败:', err);
+                setStatus('吸管抠图失败', false, true);
+            }
         }
         
         $('processBtn').addEventListener('click', async () => {
@@ -368,10 +533,6 @@
             const method = $('removeMethod').value;
             const model = $('rembgModel').value;
             const tol = $('remFloodTol').value;
-            const feather = $('feather').value;
-            const smooth = $('smooth').value;
-            const fillHoles = $('fillHoles').value;
-            const removeNoise = $('removeNoise').value;
             
             for (let i = 0; i < sel.length; i++) {
                 setStatus('抠图中 (' + (i+1) + '/' + sel.length + ')...', true);
@@ -389,10 +550,6 @@
                     rf.append('method', method);
                     rf.append('model', model);
                     rf.append('flood_tolerance', tol);
-                    rf.append('feather', feather);
-                    rf.append('smooth', smooth);
-                    rf.append('fill_holes', fillHoles);
-                    rf.append('remove_noise', removeNoise);
                     const rd = await (await fetch(API + '/api/remove_background', { method: 'POST', body: rf })).json();
                     
                     if (rd.results?.[0]) { sel[i].processed = true; sel[i].result = rd.results[0].preview; }
@@ -408,13 +565,30 @@
             
             setStatus('完成，处理了 ' + sel.length + ' 个元素');
             $('processBtn').disabled = false;
+            $('removeExport').disabled = false;
         });
         
-        $('exportBtn').addEventListener('click', () => {
-            state.removeElements.filter(e => e.processed).forEach(el => {
-                const a = document.createElement('a'); a.href = el.result; a.download = 'element_' + el.index + '.png'; a.click();
-            });
+        // 抠图导出 - 下拉菜单
+        $('removeExport').addEventListener('click', e => {
+            e.stopPropagation();
+            $('removeExportMenu').classList.toggle('hidden');
         });
+        document.addEventListener('click', () => hide($('removeExportMenu')));
+        
+        $('removeExportMenu').addEventListener('click', async e => {
+            const btn = e.target.closest('button[data-format]');
+            if (!btn) return;
+            hide($('removeExportMenu'));
+            const format = btn.dataset.format;
+            
+            // PSD 时显示布局选项
+            $('removePsdLayout').classList.toggle('hidden', format !== 'psd');
+            
+            // 用 doExport（定义在 split.js）
+            if (window.doExport) await window.doExport('remove', format);
+        });
+        
+        // 元素条框选功能
         
         // 元素条框选功能
         function initElementsMarquee(containerId, elementsKey) {

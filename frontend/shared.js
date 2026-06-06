@@ -630,3 +630,33 @@
         initMarquee('splitList', 'splitElements');
         initMarquee('removeList', 'removeElements');
         
+        // ============ Toast ============
+        function showToast(msg, type = '') {
+            const c = $('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast' + (type ? ' ' + type : '');
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2500);
+        }
+        window.showToast = showToast;
+        
+        // ============ Dialog ============
+        function showDialog(title, body) {
+            return new Promise(resolve => {
+                $('dialogTitle').textContent = title;
+                $('dialogBody').textContent = body;
+                $('dialogOverlay').classList.remove('hidden');
+                const onConfirm = () => { cleanup(); resolve(true); };
+                const onCancel = () => { cleanup(); resolve(false); };
+                const cleanup = () => {
+                    $('dialogOverlay').classList.add('hidden');
+                    $('dialogConfirm').removeEventListener('click', onConfirm);
+                    $('dialogCancel').removeEventListener('click', onCancel);
+                };
+                $('dialogConfirm').addEventListener('click', onConfirm);
+                $('dialogCancel').addEventListener('click', onCancel);
+            });
+        }
+        window.showDialog = showDialog;
+        

@@ -68,6 +68,19 @@
                                         发送到抠图
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                                     </button>
+                                    <div class="psd-layout" id="splitPsdLayout">
+                                        <span class="psd-label">PSD:</span>
+                                        <label><input type="radio" name="splitPsdPos" value="bbox" checked> 按位置</label>
+                                        <label><input type="radio" name="splitPsdPos" value="zero"> 左上对齐</label>
+                                    </div>
+                                    <div class="export-group">
+                                        <button class="btn-sm btn-sm-ghost" id="splitExport" title="导出">导出 ▾</button>
+                                        <div class="export-dropdown hidden" id="splitExportMenu">
+                                            <button data-format="png">单个 PNG</button>
+                                            <button data-format="zip">ZIP 打包</button>
+                                            <button data-format="psd">PSD 文件</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="elements-container single-row" id="splitList"></div>
@@ -162,8 +175,9 @@
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </button>
                                     <div class="tool-divider"></div>
-                                    <button class="tool-btn" id="eraserBtn" title="橡皮擦 (E)">
+                                    <button class="tool-btn" id="eraserBtn" title="橡皮擦 (E) - 右键切换模式">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                                        <span id="eraserModeLabel" style="font-size:10px;">擦除</span>
                                     </button>
                                     <input type="range" id="eraserSize" min="5" max="100" value="20" style="width:60px;height:3px;" title="橡皮擦大小">
                                     <div class="tool-divider"></div>
@@ -194,6 +208,19 @@
                                     <span class="elements-count" id="removeCount">0 个</span>
                                     <button class="btn-sm btn-sm-ghost" id="selectRemAll">全选</button>
                                     <button class="btn-sm btn-sm-ghost" id="deselectRemAll">取消</button>
+                                    <div class="psd-layout" id="removePsdLayout">
+                                        <span class="psd-label">PSD:</span>
+                                        <label><input type="radio" name="removePsdPos" value="bbox" checked> 按位置</label>
+                                        <label><input type="radio" name="removePsdPos" value="zero"> 左上对齐</label>
+                                    </div>
+                                    <div class="export-group">
+                                        <button class="btn-sm btn-sm-ghost" id="removeExport" title="导出" disabled>导出 ▾</button>
+                                        <div class="export-dropdown hidden" id="removeExportMenu">
+                                            <button data-format="png">单个 PNG</button>
+                                            <button data-format="zip">ZIP 打包</button>
+                                            <button data-format="psd">PSD 文件</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="elements-container single-row" id="removeList"></div>
@@ -204,39 +231,30 @@
                         <div class="section">
                             <div class="section-title">抠图方法</div>
                             <select class="select" id="removeMethod">
-                                <option value="rembg">AI 抠图 (rembg)</option>
-                                <option value="flood">泛洪填充</option>
-                                <option value="combined">双重抠图</option>
+                                <option value="rembg">AI 抠图 - 通用场景</option>
+                                <option value="flood">泛洪填充 - 从四角自动识别背景色</option>
+                                <option value="color_pick">吸管取色 - 点击背景颜色删除</option>
+                                <option value="combined">双重抠图 - AI + 泛洪取并集</option>
                             </select>
                         </div>
                         <div class="section" id="secRembg">
                             <div class="section-title">AI 模型</div>
                             <select class="select" id="rembgModel">
-                                <option value="u2net">u2net (通用)</option>
-                                <option value="u2netp">u2netp (轻量)</option>
-                                <option value="isnet-general-use">isnet (新版)</option>
-                                <option value="silueta">silueta (精细)</option>
+                                <option value="u2net">u2net - 通用物体，最稳定</option>
+                                <option value="u2netp">u2netp - 轻量版，速度快</option>
+                                <option value="isnet-general-use">isnet - 边缘更精细</option>
+                                <option value="silueta">silueta - 细节保留最好</option>
                             </select>
+                            <div class="field-hint">纯色背景建议用「吸管取色」，复杂主体用 u2net 或 isnet</div>
                         </div>
                         <div class="section hidden" id="secRemFlood">
                             <div class="section-title">泛洪参数</div>
                             <div class="field"><div class="field-head"><span class="field-label">颜色容差</span><span class="field-value" id="v_remFloodTol">30</span></div><input type="range" class="range" id="remFloodTol" min="10" max="100" value="30"></div>
                         </div>
-                        <div class="section">
-                            <div class="section-title">边缘优化</div>
-                            <div class="field"><div class="field-head"><span class="field-label">羽化</span><span class="field-value" id="v_feather">3</span></div><input type="range" class="range" id="feather" min="0" max="10" value="3"></div>
-                            <div class="field"><div class="field-head"><span class="field-label">平滑</span><span class="field-value" id="v_smooth">3</span></div><input type="range" class="range" id="smooth" min="0" max="10" value="3"></div>
-                            <div class="field"><div class="field-head"><span class="field-label">填充孔洞</span><span class="field-value" id="v_fillHoles">100</span></div><input type="range" class="range" id="fillHoles" min="0" max="500" step="50" value="100"></div>
-                            <div class="field"><div class="field-head"><span class="field-label">去除噪点</span><span class="field-value" id="v_removeNoise">50</span></div><input type="range" class="range" id="removeNoise" min="0" max="200" step="10" value="50"></div>
-                        </div>
                         <div class="actions">
                             <button class="btn btn-primary" id="processBtn" disabled>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                                 开始抠图
-                            </button>
-                            <button class="btn btn-secondary" id="exportBtn" disabled>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                导出 ZIP
                             </button>
                         </div>
                     </div>
@@ -257,6 +275,21 @@
             <img id="modalImg" src="">
         </div>
     </div>
+    
+    <!-- Neumorphic Dialog -->
+    <div class="dialog-overlay hidden" id="dialogOverlay">
+        <div class="dialog">
+            <div class="dialog-title" id="dialogTitle">确认</div>
+            <div class="dialog-body" id="dialogBody">内容</div>
+            <div class="dialog-actions">
+                <button class="dialog-btn" id="dialogCancel">取消</button>
+                <button class="dialog-btn dialog-btn-primary" id="dialogConfirm">确认</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Neumorphic Toast -->
+    <div class="toast-container" id="toastContainer"></div>
     
     <input type="file" id="fileInput" accept="image/*" style="display:none">
     <input type="file" id="elemInput" accept="image/*" multiple style="display:none">

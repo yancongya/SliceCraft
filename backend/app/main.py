@@ -12,7 +12,7 @@ from typing import List, Dict, Any
 import base64
 
 from .detectors import canny, flood, alpha, smart
-from .removers import rembg_remover, flood_remover, combined_remover, edge_optimizer
+from .removers import rembg_remover, flood_remover, combined_remover
 
 app = FastAPI(title="Image Splitter API")
 
@@ -159,10 +159,8 @@ async def remove_background(
     method: str = Form("rembg"),
     model: str = Form("u2net"),
     flood_tolerance: int = Form(30),
-    feather: int = Form(3),
-    smooth: int = Form(3),
-    fill_holes: int = Form(100),
-    remove_noise: int = Form(50),
+    click_x: int = Form(None),
+    click_y: int = Form(None),
 ):
     """Remove background from detected elements."""
     if image_id not in uploaded_images:
@@ -186,14 +184,18 @@ async def remove_background(
             result = rembg_remover.remove_background(cropped, model)
         elif method == "flood":
             result = flood_remover.remove_background(cropped, flood_tolerance)
+        elif method == "color_pick":
+            # 吸管取色抠图：将点击坐标转换为裁剪区域的相对坐标
+            if click_x is not None and click_y is not None:
+                rel_x = click_x - x
+                rel_y = click_y - y
+                result = flood_remover.remove_by_color(cropped, rel_x, rel_y, flood_tolerance)
+            else:
+                result = flood_remover.remove_background(cropped, flood_tolerance)
         elif method == "combined":
             result = combined_remover.remove_background(cropped, model, flood_tolerance)
         else:
             raise HTTPException(status_code=400, detail="Invalid method")
-        
-        # 边缘优化
-        if feather > 0 or smooth > 0 or fill_holes > 0 or remove_noise > 0:
-            result = edge_optimizer.optimize_edges(result, feather, smooth, fill_holes, remove_noise)
         
         # Encode result
         _, buffer = cv2.imencode('.png', result)
@@ -212,10 +214,10 @@ async def remove_background(
     })
 
 
-@app.post("/api/export")
+@app.get("/api/export")
 async def export_results(
-    image_id: str = Form(...),
-    format: str = Form("zip"),
+    image_id: str,
+    format: str = "zip",
 ):
     """Export processed elements as PNG files in a ZIP archive."""
     if image_id not in uploaded_images:
@@ -374,6 +376,133 @@ async def lasso_detect(
         result["remaining_elements"] = remaining_elements
     
     return JSONResponse(result)
+
+
+@app.get("/api/export_psd")
+async def export_psd(
+    image_id: str,
+    mode: str = "split",  # "split" = 切分结果, "remove" = 抠图结果
+):
+    """Export elements as a PSD file with each element on its own layer."""
+    if image_id not in uploaded_images:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    img_data = uploaded_images[image_id]
+    img = img_data["original"]
+    bboxes = img_data.get("bboxes", [])
+    img_h, img_w = img.shape[:2]
+    
+    if not bboxes:
+        raise HTTPException(status_code=400, detail="No elements detected")
+    
+    from psd_tools import PSDImage
+    
+    # 为每个元素创建图层
+    layers = []
+    for i, (x, y, w, h) in enumerate(bboxes):
+        cropped = img[y:y+h, x:x+w]
+        
+        if len(cropped.shape) == 2:
+            pil_img = Image.fromarray(cropped).convert("RGBA")
+        elif cropped.shape[2] == 3:
+            pil_img = Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGR2RGBA))
+        else:
+            pil_img = Image.fromarray(cv2.cvtColor(cropped, cv2.COLOR_BGRA2RGBA))
+        
+        layers.append((f"Element {i+1}", pil_img, x, y))
+    
+    try:
+        # 创建 RGBA PSD
+        psd = PSDImage.new(mode='RGBA', size=(img_w, img_h))
+        
+        # 添加每个元素图层（倒序，PSD 图层栈顶在前）
+        for name, pil_img, x, y in reversed(layers):
+            psd.create_pixel_layer(image=pil_img, name=name, top=y, left=x)
+        
+        # 保存到 BytesIO
+        psd_buffer = io.BytesIO()
+        psd.save(psd_buffer)
+        psd_buffer.seek(0)
+        
+        return StreamingResponse(
+            psd_buffer,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename={img_data['filename']}.psd"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create PSD: {str(e)}")
+
+
+@app.post("/api/export_zip_from_elements")
+async def export_zip_from_elements(
+    elements_json: str = Form(...),  # JSON array: [{"name": "...", "base64": "..."}]
+):
+    """从抠图结果直接生成 ZIP"""
+    import json as json_mod
+    elements = json_mod.loads(elements_json)
+    
+    if not elements:
+        raise HTTPException(status_code=400, detail="No elements")
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for el in elements:
+            b64_data = el['base64']
+            if ',' in b64_data:
+                b64_data = b64_data.split(',')[1]
+            img_bytes = base64.b64decode(b64_data)
+            zip_file.writestr(el.get('name', 'element.png'), img_bytes)
+    
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename=elements.zip'}
+    )
+
+
+@app.post("/api/export_psd_from_elements")
+async def export_psd_from_elements(
+    elements_json: str = Form(...),  # JSON array: [{"name": "...", "base64": "...", "x": 0, "y": 0}]
+    canvas_width: int = Form(...),
+    canvas_height: int = Form(...),
+):
+    """从抠图结果直接生成 PSD"""
+    import json as json_mod
+    elements = json_mod.loads(elements_json)
+    
+    if not elements:
+        raise HTTPException(status_code=400, detail="No elements")
+    
+    from psd_tools import PSDImage
+    
+    psd = PSDImage.new(mode='RGBA', size=(canvas_width, canvas_height))
+    
+    # 倒序添加，PSD 图层栈顶在前
+    for el in reversed(elements):
+        # 解码 base64 图片
+        b64_data = el['base64']
+        if ',' in b64_data:
+            b64_data = b64_data.split(',')[1]
+        img_bytes = base64.b64decode(b64_data)
+        pil_img = Image.open(io.BytesIO(img_bytes)).convert('RGBA')
+        
+        psd.create_pixel_layer(
+            image=pil_img,
+            name=el.get('name', 'Layer'),
+            top=el.get('y', 0),
+            left=el.get('x', 0)
+        )
+    
+    psd_buffer = io.BytesIO()
+    psd.save(psd_buffer)
+    psd_buffer.seek(0)
+    
+    return StreamingResponse(
+        psd_buffer,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": 'attachment; filename=elements.psd'}
+    )
 
 
 @app.get("/api/health")

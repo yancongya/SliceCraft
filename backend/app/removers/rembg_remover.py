@@ -34,4 +34,11 @@ def remove_background(img: np.ndarray, model: str = "u2net") -> np.ndarray:
     else:
         result = cv2.cvtColor(result_np, cv2.COLOR_RGB2BGR)
     
+    # Fix: 将透明区域的 RGB 值设置为白色，避免黑色边缘
+    alpha = result[:, :, 3]
+    mask = alpha == 0
+    result[mask, 0] = 255  # B
+    result[mask, 1] = 255  # G
+    result[mask, 2] = 255  # R
+    
     return result
