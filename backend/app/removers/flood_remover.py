@@ -35,14 +35,15 @@ def remove_background(img: np.ndarray, tolerance: int = 30) -> np.ndarray:
     # Create mask for flood fill
     mask = np.zeros((h + 2, w + 2), np.uint8)
     
-    # Flood fill from corners
-    for point in [(0, 0), (0, w-1), (h-1, 0), (h-1, w-1)]:
-        cv2.floodFill(
-            bgr.copy(), mask, point, (0, 0, 0),
-            loDiff=(tolerance, tolerance, tolerance),
-            upDiff=(tolerance, tolerance, tolerance),
-            flags=cv2.FLOODFILL_MASK_ONLY | (255 << 8)
-        )
+    # Flood fill from corners (x, y) format
+    for point in [(0, 0), (w-1, 0), (0, h-1), (w-1, h-1)]:
+        if 0 <= point[0] < w and 0 <= point[1] < h:
+            cv2.floodFill(
+                bgr.copy(), mask, point, (0, 0, 0),
+                loDiff=(tolerance, tolerance, tolerance),
+                upDiff=(tolerance, tolerance, tolerance),
+                flags=cv2.FLOODFILL_MASK_ONLY | (255 << 8)
+            )
     
     # Invert mask to get foreground
     foreground_mask = cv2.bitwise_not(mask[1:-1, 1:-1])
