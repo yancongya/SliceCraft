@@ -1,0 +1,14 @@
+services:
+  image-splitter:
+    build: .
+    container_name: image-splitter
+    ports:
+      - "8001:8001"
+    volumes:
+      - model-cache:/root/.cache
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+volumes:
+  model-cache:
