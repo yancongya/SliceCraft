@@ -168,10 +168,12 @@ async def remove_background(
     img = img_data["original"]
     bboxes = img_data.get("bboxes", [])
     
-    if not bboxes:
-        raise HTTPException(status_code=400, detail="No elements detected. Run detection first.")
-    
     results = []
+    
+    if not bboxes:
+        # 没有检测结果，直接处理整张图片
+        bboxes = [(0, 0, img.shape[1], img.shape[0])]
+    
     for i, (x, y, w, h) in enumerate(bboxes):
         # Crop element
         cropped = img[y:y+h, x:x+w]

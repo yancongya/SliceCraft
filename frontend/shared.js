@@ -356,7 +356,17 @@
         // ============ 框选 ============
         function initMarquee(previewId, elementsKey) {
             const preview = $(previewId);
-            const marquee = preview.querySelector('.marquee');
+            if (!preview) return;
+            
+            // 查找或创建 marquee 元素
+            let marquee = preview.querySelector('.marquee');
+            if (!marquee) {
+                marquee = document.createElement('div');
+                marquee.className = 'marquee';
+                preview.style.position = 'relative';
+                preview.appendChild(marquee);
+            }
+            
             let active = false, sx, sy, altKey = false;
             
             // 阻止默认的拖拽和选择行为
@@ -456,4 +466,125 @@
                 return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
             }
         }
+        
+        // ============ 绘制画布边框 ============
+        function drawOverlay() {
+            const canvas = $('overlayCanvas');
+            const img = $('splitImage');
+            const preview = $('splitPreview');
+            if (!canvas || !img || img.classList.contains('hidden')) return;
+            
+            const containerRect = preview.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = containerRect.width * dpr;
+            canvas.height = containerRect.height * dpr;
+            canvas.style.width = containerRect.width + 'px';
+            canvas.style.height = containerRect.height + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!state.splitElements.length) return;
+            
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            const scaleX = imgRect.width / img.naturalWidth;
+            const scaleY = imgRect.height / img.naturalHeight;
+            
+            state.splitElements.forEach((el, i) => {
+                const [x, y, w, h] = el.bbox;
+                const sx = offsetX + x * scaleX;
+                const sy = offsetY + y * scaleY;
+                const sw = w * scaleX;
+                const sh = h * scaleY;
+                
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(sx, sy, sw, sh);
+                
+                ctx.fillStyle = '#22c55e';
+                ctx.font = 'bold 11px sans-serif';
+                const text = String(el.index);
+                const tw = ctx.measureText(text).width + 8;
+                ctx.fillRect(sx, sy - 18, tw, 18);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(text, sx + 4, sy - 5);
+            });
+            
+            canvas.style.pointerEvents = 'auto';
+        }
+        
+        // 点击画布边框删除元素
+        $('overlayCanvas')?.addEventListener('click', e => {
+            if (!state.splitElements.length) return;
+            
+            const canvas = $('overlayCanvas');
+            const img = $('splitImage');
+            const preview = $('splitPreview');
+            const containerRect = preview.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            const clickX = e.clientX - containerRect.left;
+            const clickY = e.clientY - containerRect.top;
+            
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            const scaleX = imgRect.width / img.naturalWidth;
+            const scaleY = imgRect.height / img.naturalHeight;
+            
+            for (let i = state.splitElements.length - 1; i >= 0; i--) {
+                const el = state.splitElements[i];
+                const [x, y, w, h] = el.bbox;
+                const sx = offsetX + x * scaleX;
+                const sy = offsetY + y * scaleY;
+                const sw = w * scaleX;
+                const sh = h * scaleY;
+                
+                if (clickX >= sx && clickX <= sx + sw && clickY >= sy && clickY <= sy + sh) {
+                    state.splitElements.splice(i, 1);
+                    drawOverlay();
+                    if (typeof renderSplitElements === 'function') renderSplitElements();
+                    setStatus('已删除元素 ' + el.index);
+                    return;
+                }
+            }
+        });
+        
+        // 鼠标悬停样式
+        $('overlayCanvas')?.addEventListener('mousemove', e => {
+            if (!state.splitElements.length) return;
+            
+            const canvas = $('overlayCanvas');
+            const img = $('splitImage');
+            const preview = $('splitPreview');
+            const containerRect = preview.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            const mx = e.clientX - containerRect.left;
+            const my = e.clientY - containerRect.top;
+            
+            const offsetX = imgRect.left - containerRect.left;
+            const offsetY = imgRect.top - containerRect.top;
+            const scaleX = imgRect.width / img.naturalWidth;
+            const scaleY = imgRect.height / img.naturalHeight;
+            
+            let hovering = false;
+            for (const el of state.splitElements) {
+                const [x, y, w, h] = el.bbox;
+                const sx = offsetX + x * scaleX;
+                const sy = offsetY + y * scaleY;
+                const sw = w * scaleX;
+                const sh = h * scaleY;
+                if (mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh) {
+                    hovering = true;
+                    break;
+                }
+            }
+            canvas.style.cursor = hovering ? 'pointer' : 'default';
+        });
+        
+        // ============ 初始化框选 ============
+        initMarquee('splitList', 'splitElements');
+        initMarquee('removeList', 'removeElements');
         

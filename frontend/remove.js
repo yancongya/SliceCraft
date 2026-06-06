@@ -1,5 +1,99 @@
         // ============ 抠图面板 ============
         
+        // 画布状态
+        const canvasState = {
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+            isDragging: false,
+            lastX: 0,
+            lastY: 0,
+            currentImage: null,
+            currentElement: null
+        };
+        
+        // 在画布上显示图片
+        function showOnCanvas(src, element = null) {
+            const canvas = $('removeCanvas');
+            const container = $('canvasContainer');
+            if (!canvas || !container) return;
+            
+            canvasState.currentImage = src;
+            if (element) canvasState.currentElement = element;
+            
+            const img = new Image();
+            img.onload = () => {
+                const containerW = container.offsetWidth;
+                const containerH = container.offsetHeight;
+                const padding = 40;
+                
+                const scaleX = (containerW - padding) / img.width;
+                const scaleY = (containerH - padding) / img.height;
+                canvasState.scale = Math.min(scaleX, scaleY, 1);
+                canvasState.offsetX = 0;
+                canvasState.offsetY = 0;
+                
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.style.width = img.width + 'px';
+                canvas.style.height = img.height + 'px';
+                
+                drawCanvas(img);
+            };
+            img.src = src;
+            
+            // 显示画布，隐藏空状态
+            container.style.display = 'block';
+            $('removeEmpty').classList.add('hidden');
+        }
+        
+        function drawCanvas(img) {
+            const canvas = $('removeCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            
+            canvas.style.transform = `translate(calc(-50% + ${canvasState.offsetX}px), calc(-50% + ${canvasState.offsetY}px)) scale(${canvasState.scale})`;
+        }
+        
+        // 画布缩放
+        $('canvasContainer')?.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            canvasState.scale = Math.max(0.1, Math.min(10, canvasState.scale * delta));
+            const canvas = $('removeCanvas');
+            if (canvas) {
+                canvas.style.transform = `translate(calc(-50% + ${canvasState.offsetX}px), calc(-50% + ${canvasState.offsetY}px)) scale(${canvasState.scale})`;
+            }
+        });
+        
+        // 画布拖拽
+        $('canvasContainer')?.addEventListener('mousedown', e => {
+            canvasState.isDragging = true;
+            canvasState.lastX = e.clientX;
+            canvasState.lastY = e.clientY;
+        });
+        
+        document.addEventListener('mousemove', e => {
+            if (!canvasState.isDragging) return;
+            const dx = e.clientX - canvasState.lastX;
+            const dy = e.clientY - canvasState.lastY;
+            canvasState.offsetX += dx;
+            canvasState.offsetY += dy;
+            canvasState.lastX = e.clientX;
+            canvasState.lastY = e.clientY;
+            const canvas = $('removeCanvas');
+            if (canvas) {
+                canvas.style.transform = `translate(calc(-50% + ${canvasState.offsetX}px), calc(-50% + ${canvasState.offsetY}px)) scale(${canvasState.scale})`;
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            canvasState.isDragging = false;
+        });
+        
         $('uploadElemBtn').addEventListener('click', () => $('elemInput').click());
         $('elemInput').addEventListener('change', e => {
             Array.from(e.target.files).forEach(file => {
@@ -37,11 +131,13 @@
                 const div = document.createElement('div');
                 div.className = 'elem-card' + (el.selected ? ' selected' : '');
                 div.dataset.index = el.index;
-                div.innerHTML = '<img src="' + (el.processed ? el.result : el.preview) + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
+                const imgSrc = el.processed ? el.result : el.preview;
+                div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
                 div.addEventListener('click', e => {
                     if (e.target.classList.contains('card-delete')) return;
                     if (e.shiftKey) { el.selected = true; } else { el.selected = !el.selected; }
                     div.classList.toggle('selected', el.selected);
+                    showOnCanvas(imgSrc, el);
                     updateBadges();
                 });
                 div.addEventListener('dblclick', e => {
