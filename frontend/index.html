@@ -176,6 +176,7 @@
                                     <button class="tool-btn" data-bg="black" title="黑色背景">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
                                     </button>
+                                    <input type="color" id="customBgColor" value="#808080" style="width:24px;height:24px;border:none;cursor:pointer;" title="自定义颜色">
                                 </div>
                             </div>
                             <div class="empty" id="removeEmpty">
@@ -220,6 +221,13 @@
                         <div class="section hidden" id="secRemFlood">
                             <div class="section-title">泛洪参数</div>
                             <div class="field"><div class="field-head"><span class="field-label">颜色容差</span><span class="field-value" id="v_remFloodTol">30</span></div><input type="range" class="range" id="remFloodTol" min="10" max="100" value="30"></div>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">边缘优化</div>
+                            <div class="field"><div class="field-head"><span class="field-label">羽化</span><span class="field-value" id="v_feather">3</span></div><input type="range" class="range" id="feather" min="0" max="10" value="3"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">平滑</span><span class="field-value" id="v_smooth">3</span></div><input type="range" class="range" id="smooth" min="0" max="10" value="3"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">填充孔洞</span><span class="field-value" id="v_fillHoles">100</span></div><input type="range" class="range" id="fillHoles" min="0" max="500" step="50" value="100"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">去除噪点</span><span class="field-value" id="v_removeNoise">50</span></div><input type="range" class="range" id="removeNoise" min="0" max="200" step="10" value="50"></div>
                         </div>
                         <div class="actions">
                             <button class="btn btn-primary" id="processBtn" disabled>

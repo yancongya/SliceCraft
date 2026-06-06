@@ -130,6 +130,7 @@
         
         // 背景色切换
         let bgMode = 'checker';
+        let customColor = '#808080';
         document.querySelectorAll('[data-bg]').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('[data-bg]').forEach(b => b.classList.remove('active'));
@@ -138,23 +139,35 @@
                 updateCanvasBackground();
             });
         });
+        
+        // 自定义颜色
+        $('customBgColor')?.addEventListener('input', e => {
+            customColor = e.target.value;
+            document.querySelectorAll('[data-bg]').forEach(b => b.classList.remove('active'));
+            bgMode = 'custom';
+            updateCanvasBackground();
+        });
         function updateCanvasBackground() {
             const container = $('canvasContainer');
             if (!container) return;
-            container.style.backgroundColor = '';
-            container.style.backgroundImage = '';
+            
+            // 保存基础样式
+            const baseStyle = 'position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;cursor:grab;z-index:5;';
+            
             switch (bgMode) {
                 case 'checker':
-                    container.style.backgroundImage = 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)';
-                    container.style.backgroundSize = '20px 20px';
-                    container.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
-                    container.style.backgroundColor = '#ffffff';
+                    container.style.cssText = baseStyle + 
+                        'background-image:linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);' +
+                        'background-size:20px 20px;background-position:0 0, 0 10px, 10px -10px, -10px 0px;background-color:#ffffff;';
                     break;
                 case 'white':
-                    container.style.backgroundColor = '#ffffff';
+                    container.style.cssText = baseStyle + 'background-color:#ffffff;';
                     break;
                 case 'black':
-                    container.style.backgroundColor = '#000000';
+                    container.style.cssText = baseStyle + 'background-color:#000000;';
+                    break;
+                case 'custom':
+                    container.style.cssText = baseStyle + 'background-color:' + customColor + ';';
                     break;
             }
         }
@@ -164,7 +177,11 @@
             if (!canvas) return;
             
             const ctx = canvas.getContext('2d');
+            // 清除画布为透明
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 确保 canvas 背景透明
+            canvas.style.backgroundColor = 'transparent';
+            // 绘制图片
             ctx.drawImage(img, 0, 0);
             
             canvas.style.transform = `translate(calc(-50% + ${canvasState.offsetX}px), calc(-50% + ${canvasState.offsetY}px)) scale(${canvasState.scale})`;
@@ -271,6 +288,12 @@
         
         $('remFloodTol').addEventListener('input', e => $('v_remFloodTol').textContent = e.target.value);
         
+        // 边缘优化滑块
+        $('feather').addEventListener('input', e => $('v_feather').textContent = e.target.value);
+        $('smooth').addEventListener('input', e => $('v_smooth').textContent = e.target.value);
+        $('fillHoles').addEventListener('input', e => $('v_fillHoles').textContent = e.target.value);
+        $('removeNoise').addEventListener('input', e => $('v_removeNoise').textContent = e.target.value);
+        
         function renderRemoveElements() {
             const has = state.removeElements.length > 0;
             $('removeEmpty').classList.toggle('hidden', has);
@@ -345,6 +368,10 @@
             const method = $('removeMethod').value;
             const model = $('rembgModel').value;
             const tol = $('remFloodTol').value;
+            const feather = $('feather').value;
+            const smooth = $('smooth').value;
+            const fillHoles = $('fillHoles').value;
+            const removeNoise = $('removeNoise').value;
             
             for (let i = 0; i < sel.length; i++) {
                 setStatus('抠图中 (' + (i+1) + '/' + sel.length + ')...', true);
@@ -358,7 +385,14 @@
                     await fetch(API + '/api/detect', { method: 'POST', body: df });
                     
                     const rf = new FormData();
-                    rf.append('image_id', up.image_id); rf.append('method', method); rf.append('model', model); rf.append('flood_tolerance', tol);
+                    rf.append('image_id', up.image_id);
+                    rf.append('method', method);
+                    rf.append('model', model);
+                    rf.append('flood_tolerance', tol);
+                    rf.append('feather', feather);
+                    rf.append('smooth', smooth);
+                    rf.append('fill_holes', fillHoles);
+                    rf.append('remove_noise', removeNoise);
                     const rd = await (await fetch(API + '/api/remove_background', { method: 'POST', body: rf })).json();
                     
                     if (rd.results?.[0]) { sel[i].processed = true; sel[i].result = rd.results[0].preview; }
@@ -366,6 +400,12 @@
             }
             
             renderRemoveElements();
+            
+            // 更新画布显示当前元素的抠图结果
+            if (canvasState.currentElement && canvasState.currentElement.processed) {
+                showOnCanvas(canvasState.currentElement.result, canvasState.currentElement);
+            }
+            
             setStatus('完成，处理了 ' + sel.length + ' 个元素');
             $('processBtn').disabled = false;
         });

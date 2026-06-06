@@ -12,7 +12,7 @@ from typing import List, Dict, Any
 import base64
 
 from .detectors import canny, flood, alpha, smart
-from .removers import rembg_remover, flood_remover, combined_remover
+from .removers import rembg_remover, flood_remover, combined_remover, edge_optimizer
 
 app = FastAPI(title="Image Splitter API")
 
@@ -159,6 +159,10 @@ async def remove_background(
     method: str = Form("rembg"),
     model: str = Form("u2net"),
     flood_tolerance: int = Form(30),
+    feather: int = Form(3),
+    smooth: int = Form(3),
+    fill_holes: int = Form(100),
+    remove_noise: int = Form(50),
 ):
     """Remove background from detected elements."""
     if image_id not in uploaded_images:
@@ -186,6 +190,10 @@ async def remove_background(
             result = combined_remover.remove_background(cropped, model, flood_tolerance)
         else:
             raise HTTPException(status_code=400, detail="Invalid method")
+        
+        # 边缘优化
+        if feather > 0 or smooth > 0 or fill_holes > 0 or remove_noise > 0:
+            result = edge_optimizer.optimize_edges(result, feather, smooth, fill_holes, remove_noise)
         
         # Encode result
         _, buffer = cv2.imencode('.png', result)
