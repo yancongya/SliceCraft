@@ -6,10 +6,14 @@
             offsetX: 0,
             offsetY: 0,
             isDragging: false,
+            isErasing: false,
+            showingOriginal: false,
             lastX: 0,
             lastY: 0,
             currentImage: null,
-            currentElement: null
+            currentElement: null,
+            eraserSize: 20,
+            bgMode: 'checker'
         };
         
         // 在画布上显示图片
@@ -42,9 +46,158 @@
             };
             img.src = src;
             
-            // 显示画布，隐藏空状态
+            // 显示画布和工具栏，隐藏空状态
             container.style.display = 'block';
+            $('removeToolbar').style.display = 'flex';
             $('removeEmpty').classList.add('hidden');
+            updateCanvasBackground();
+            updateCanvasCursor();
+        }
+        
+        // 眼睛功能 - 按住查看原图，松开显示抠图结果
+        function showOriginal() {
+            if (!canvasState.currentElement?.processed || canvasState.showingOriginal) return;
+            canvasState.showingOriginal = true;
+            $('eyeBtn')?.classList.add('active');
+            showOnCanvas(canvasState.currentElement.preview, canvasState.currentElement);
+        }
+        
+        function hideOriginal() {
+            if (!canvasState.showingOriginal) return;
+            canvasState.showingOriginal = false;
+            $('eyeBtn')?.classList.remove('active');
+            if (canvasState.currentElement) {
+                showOnCanvas(canvasState.currentElement.result, canvasState.currentElement);
+            }
+        }
+        
+        $('eyeBtn')?.addEventListener('mousedown', showOriginal);
+        $('eyeBtn')?.addEventListener('mouseup', hideOriginal);
+        $('eyeBtn')?.addEventListener('mouseleave', hideOriginal);
+        
+        // V 键按住查看原图
+        document.addEventListener('keydown', e => {
+            if (e.key === 'v' || e.key === 'V') showOriginal();
+        });
+        document.addEventListener('keyup', e => {
+            if (e.key === 'v' || e.key === 'V') hideOriginal();
+        });
+        
+        // 橡皮擦功能
+        $('eraserBtn')?.addEventListener('click', () => {
+            canvasState.isErasing = !canvasState.isErasing;
+            $('eraserBtn').classList.toggle('active', canvasState.isErasing);
+            updateCanvasCursor();
+        });
+        
+        $('eraserSize')?.addEventListener('input', e => {
+            canvasState.eraserSize = parseInt(e.target.value);
+        });
+        
+        function updateCanvasCursor() {
+            const container = $('canvasContainer');
+            if (!container) return;
+            if (canvasState.isErasing) {
+                const size = canvasState.eraserSize;
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1}" fill="none" stroke="red" stroke-width="1.5"/></svg>`;
+                const encoded = btoa(svg);
+                container.style.cursor = `url('data:image/svg+xml;base64,${encoded}') ${size/2} ${size/2}, crosshair`;
+            } else {
+                container.style.cursor = 'grab';
+            }
+        }
+        
+        function eraseAtPosition(x, y) {
+            if (!canvasState.currentElement) return;
+            const canvas = $('removeCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const radius = canvasState.eraserSize / 2 / canvasState.scale;
+            
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            // 保存修改
+            canvasState.currentElement.result = canvas.toDataURL('image/png');
+        }
+        
+        // 归位功能
+        function resetRemoveView() {
+            const canvas = $('removeCanvas');
+            const container = $('canvasContainer');
+            if (!canvas || !container || !canvasState.currentImage) return;
+            
+            const img = new Image();
+            img.onload = () => {
+                const containerW = container.offsetWidth;
+                const containerH = container.offsetHeight;
+                const padding = 40;
+                
+                const scaleX = (containerW - padding) / img.width;
+                const scaleY = (containerH - padding) / img.height;
+                canvasState.scale = Math.min(scaleX, scaleY, 1);
+                canvasState.offsetX = 0;
+                canvasState.offsetY = 0;
+                
+                drawCanvas(img);
+            };
+            img.src = canvasState.currentImage;
+        }
+        
+        // 归位按钮
+        $('resetViewBtn')?.addEventListener('click', resetRemoveView);
+        
+        // R 键归位
+        document.addEventListener('keydown', e => {
+            if ((e.key === 'r' || e.key === 'R') && state.currentTab === 'remove') {
+                resetRemoveView();
+            }
+        });
+        
+        // 背景色切换
+        document.querySelectorAll('[data-bg]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-bg]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                canvasState.bgMode = btn.dataset.bg;
+                updateCanvasBackground();
+            });
+        });
+        
+        function updateCanvasBackground() {
+            const container = $('canvasContainer');
+            if (!container) return;
+            
+            // 重置所有背景样式
+            container.style.cssText = container.style.cssText.replace(/background[^;]*;?/g, '');
+            container.style.position = 'absolute';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.right = '0';
+            container.style.bottom = '0';
+            container.style.overflow = 'hidden';
+            container.style.cursor = canvasState.isErasing ? 'crosshair' : 'grab';
+            container.style.zIndex = '5';
+            
+            switch (canvasState.bgMode) {
+                case 'checker':
+                    container.style.backgroundImage = 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)';
+                    container.style.backgroundSize = '20px 20px';
+                    container.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
+                    container.style.backgroundColor = '#ffffff';
+                    break;
+                case 'white':
+                    container.style.backgroundColor = '#ffffff';
+                    break;
+                case 'black':
+                    container.style.backgroundColor = '#000000';
+                    break;
+            }
         }
         
         function drawCanvas(img) {
@@ -69,14 +222,56 @@
             }
         });
         
-        // 画布拖拽
+        // 空格键临时切换到拖拽模式
+        let spacePressed = false;
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' && !spacePressed) {
+                spacePressed = true;
+                canvasState.tempDrag = true;
+                $('canvasContainer').style.cursor = 'grab';
+            }
+        });
+        document.addEventListener('keyup', e => {
+            if (e.code === 'Space') {
+                spacePressed = false;
+                canvasState.tempDrag = false;
+                updateCanvasCursor();
+            }
+        });
+        
+        // 画布交互
         $('canvasContainer')?.addEventListener('mousedown', e => {
-            canvasState.isDragging = true;
-            canvasState.lastX = e.clientX;
-            canvasState.lastY = e.clientY;
+            if (e.target.closest('.toolbar')) return;
+            
+            // 空格键或非橡皮擦模式：拖拽
+            if (canvasState.tempDrag || !canvasState.isErasing) {
+                canvasState.isDragging = true;
+                canvasState.lastX = e.clientX;
+                canvasState.lastY = e.clientY;
+            } else {
+                canvasState.isErasingActive = true;
+                const canvas = $('removeCanvas');
+                if (canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / canvasState.scale;
+                    const y = (e.clientY - rect.top) / canvasState.scale;
+                    eraseAtPosition(x, y);
+                }
+            }
         });
         
         document.addEventListener('mousemove', e => {
+            if (canvasState.isErasingActive && !canvasState.tempDrag) {
+                const canvas = $('removeCanvas');
+                if (canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / canvasState.scale;
+                    const y = (e.clientY - rect.top) / canvasState.scale;
+                    eraseAtPosition(x, y);
+                }
+                return;
+            }
+            
             if (!canvasState.isDragging) return;
             const dx = e.clientX - canvasState.lastX;
             const dy = e.clientY - canvasState.lastY;
@@ -92,6 +287,7 @@
         
         document.addEventListener('mouseup', () => {
             canvasState.isDragging = false;
+            canvasState.isErasingActive = false;
         });
         
         $('uploadElemBtn').addEventListener('click', () => $('elemInput').click());

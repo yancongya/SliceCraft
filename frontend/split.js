@@ -26,9 +26,7 @@
                 if (!res.ok) throw new Error('上传失败');
                 const data = await res.json();
                 state.splitImageId = data.image_id;
-                $('splitImage').src = data.preview;
-                show($('splitImage')); hide($('uploadZone'));
-                $('toolbar').style.display = 'flex';
+                showSplitOnCanvas(data.preview);
                 setStatus(data.filename + ' (' + data.width + '×' + data.height + ')');
                 runDetection();
             } catch (err) { setStatus(err.message, false, true); }
@@ -135,7 +133,7 @@
                 const res = await fetch(API + '/api/detect', { method: 'POST', body: fd });
                 if (!res.ok) throw new Error('检测失败');
                 const data = await res.json();
-                $('splitImage').src = data.preview;
+                showSplitOnCanvas(data.preview);
                 state.splitElements = (data.elements || []).map(el => ({ ...el, selected: true }));
                 renderSplitElements();
                 setStatus('找到 ' + data.count + ' 个元素');

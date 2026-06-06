@@ -145,16 +145,16 @@
             lassoCtx.lineWidth = 2;
             lassoCtx.stroke();
             
-            // 获取原图尺寸
-            const img = $('splitImage');
-            const imgNaturalW = img.naturalWidth;
-            const imgNaturalH = img.naturalHeight;
-            const imgDisplayW = img.offsetWidth;
-            const imgDisplayH = img.offsetHeight;
+            // 获取画布尺寸
+            const splitCanvas = $('splitCanvas');
+            const canvasNaturalW = splitCanvas.width;
+            const canvasNaturalH = splitCanvas.height;
+            const canvasDisplayW = splitCanvas.offsetWidth;
+            const canvasDisplayH = splitCanvas.offsetHeight;
             
             // 计算缩放比例
-            const scaleX = imgNaturalW / imgDisplayW;
-            const scaleY = imgNaturalH / imgDisplayH;
+            const scaleX = canvasNaturalW / canvasDisplayW;
+            const scaleY = canvasNaturalH / canvasDisplayH;
             
             // 计算图片在画布中的偏移
             const imgRect = img.getBoundingClientRect();
@@ -468,36 +468,41 @@
         }
         
         // ============ 绘制画布边框 ============
+        // 直接在 splitCanvas 上绘制，避免坐标同步问题
+        let originalImage = null;
+        
         function drawOverlay() {
-            const canvas = $('overlayCanvas');
-            const img = $('splitImage');
-            const preview = $('splitPreview');
-            if (!canvas || !img || img.classList.contains('hidden')) return;
-            
-            const containerRect = preview.getBoundingClientRect();
-            const imgRect = img.getBoundingClientRect();
-            
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = containerRect.width * dpr;
-            canvas.height = containerRect.height * dpr;
-            canvas.style.width = containerRect.width + 'px';
-            canvas.style.height = containerRect.height + 'px';
-            
-            const ctx = canvas.getContext('2d');
-            ctx.scale(dpr, dpr);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+            const splitCanvas = $('splitCanvas');
+            const container = $('splitCanvasContainer');
+            if (!splitCanvas || !container || container.style.display === 'none') return;
             if (!state.splitElements.length) return;
             
-            const offsetX = imgRect.left - containerRect.left;
-            const offsetY = imgRect.top - containerRect.top;
-            const scaleX = imgRect.width / img.naturalWidth;
-            const scaleY = imgRect.height / img.naturalHeight;
+            const img = $('splitImage');
+            if (!img || !img.naturalWidth) return;
             
+            // 保存原始图片用于重绘
+            if (!originalImage) {
+                originalImage = new Image();
+                originalImage.src = splitCanvasState.currentImage;
+            }
+            
+            const ctx = splitCanvas.getContext('2d');
+            
+            // 重绘原始图片
+            ctx.clearRect(0, 0, splitCanvas.width, splitCanvas.height);
+            if (originalImage.complete) {
+                ctx.drawImage(originalImage, 0, 0);
+            }
+            
+            // 计算缩放比例
+            const scaleX = splitCanvas.width / img.naturalWidth;
+            const scaleY = splitCanvas.height / img.naturalHeight;
+            
+            // 绘制边框
             state.splitElements.forEach((el, i) => {
                 const [x, y, w, h] = el.bbox;
-                const sx = offsetX + x * scaleX;
-                const sy = offsetY + y * scaleY;
+                const sx = x * scaleX;
+                const sy = y * scaleY;
                 const sw = w * scaleX;
                 const sh = h * scaleY;
                 
@@ -513,32 +518,28 @@
                 ctx.fillStyle = '#fff';
                 ctx.fillText(text, sx + 4, sy - 5);
             });
-            
-            canvas.style.pointerEvents = 'auto';
         }
         
         // 点击画布边框删除元素
-        $('overlayCanvas')?.addEventListener('click', e => {
+        $('splitCanvas')?.addEventListener('click', e => {
             if (!state.splitElements.length) return;
             
-            const canvas = $('overlayCanvas');
-            const img = $('splitImage');
-            const preview = $('splitPreview');
-            const containerRect = preview.getBoundingClientRect();
-            const imgRect = img.getBoundingClientRect();
-            const clickX = e.clientX - containerRect.left;
-            const clickY = e.clientY - containerRect.top;
+            const splitCanvas = $('splitCanvas');
+            const container = $('splitCanvasContainer');
+            if (!splitCanvas || !container) return;
             
-            const offsetX = imgRect.left - containerRect.left;
-            const offsetY = imgRect.top - containerRect.top;
-            const scaleX = imgRect.width / img.naturalWidth;
-            const scaleY = imgRect.height / img.naturalHeight;
+            const canvasRect = splitCanvas.getBoundingClientRect();
+            const clickX = e.clientX - canvasRect.left;
+            const clickY = e.clientY - canvasRect.top;
+            
+            const scaleX = splitCanvas.width / canvasRect.width;
+            const scaleY = splitCanvas.height / canvasRect.height;
             
             for (let i = state.splitElements.length - 1; i >= 0; i--) {
                 const el = state.splitElements[i];
                 const [x, y, w, h] = el.bbox;
-                const sx = offsetX + x * scaleX;
-                const sy = offsetY + y * scaleY;
+                const sx = x * scaleX;
+                const sy = y * scaleY;
                 const sw = w * scaleX;
                 const sh = h * scaleY;
                 
@@ -553,27 +554,25 @@
         });
         
         // 鼠标悬停样式
-        $('overlayCanvas')?.addEventListener('mousemove', e => {
+        $('splitCanvas')?.addEventListener('mousemove', e => {
             if (!state.splitElements.length) return;
             
-            const canvas = $('overlayCanvas');
-            const img = $('splitImage');
-            const preview = $('splitPreview');
-            const containerRect = preview.getBoundingClientRect();
-            const imgRect = img.getBoundingClientRect();
-            const mx = e.clientX - containerRect.left;
-            const my = e.clientY - containerRect.top;
+            const splitCanvas = $('splitCanvas');
+            const container = $('splitCanvasContainer');
+            if (!splitCanvas || !container) return;
             
-            const offsetX = imgRect.left - containerRect.left;
-            const offsetY = imgRect.top - containerRect.top;
-            const scaleX = imgRect.width / img.naturalWidth;
-            const scaleY = imgRect.height / img.naturalHeight;
+            const canvasRect = splitCanvas.getBoundingClientRect();
+            const mx = e.clientX - canvasRect.left;
+            const my = e.clientY - canvasRect.top;
+            
+            const scaleX = splitCanvas.width / canvasRect.width;
+            const scaleY = splitCanvas.height / canvasRect.height;
             
             let hovering = false;
             for (const el of state.splitElements) {
                 const [x, y, w, h] = el.bbox;
-                const sx = offsetX + x * scaleX;
-                const sy = offsetY + y * scaleY;
+                const sx = x * scaleX;
+                const sy = y * scaleY;
                 const sw = w * scaleX;
                 const sh = h * scaleY;
                 if (mx >= sx && mx <= sx + sw && my >= sy && my <= sy + sh) {
@@ -581,10 +580,179 @@
                     break;
                 }
             }
-            canvas.style.cursor = hovering ? 'pointer' : 'default';
+            splitCanvas.style.cursor = hovering ? 'pointer' : 'default';
         });
         
         // ============ 初始化框选 ============
         initMarquee('splitList', 'splitElements');
         initMarquee('removeList', 'removeElements');
+        
+        // ============ 切分面板画布 ============
+        const splitCanvasState = {
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+            isDragging: false,
+            lastX: 0,
+            lastY: 0,
+            currentImage: null,
+            bgMode: 'checker'
+        };
+        
+        function showSplitOnCanvas(src) {
+            const canvas = $('splitCanvas');
+            const container = $('splitCanvasContainer');
+            if (!canvas || !container) return;
+            
+            splitCanvasState.currentImage = src;
+            // 同时更新 splitImage 元素（为了兼容性）
+            const splitImg = $('splitImage');
+            if (splitImg) splitImg.src = src;
+            
+            const img = new Image();
+            img.onload = () => {
+                const containerW = container.offsetWidth;
+                const containerH = container.offsetHeight;
+                const padding = 40;
+                
+                const scaleX = (containerW - padding) / img.width;
+                const scaleY = (containerH - padding) / img.height;
+                splitCanvasState.scale = Math.min(scaleX, scaleY, 1);
+                splitCanvasState.offsetX = 0;
+                splitCanvasState.offsetY = 0;
+                
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.style.width = img.width + 'px';
+                canvas.style.height = img.height + 'px';
+                
+                drawSplitCanvas(img);
+            };
+            img.src = src;
+            
+            container.style.display = 'block';
+            $('splitToolbar').style.display = 'flex';
+            $('uploadZone').style.display = 'none';
+            updateSplitCanvasBackground();
+        }
+        
+        function drawSplitCanvas(img) {
+            const canvas = $('splitCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            
+            canvas.style.transform = `translate(calc(-50% + ${splitCanvasState.offsetX}px), calc(-50% + ${splitCanvasState.offsetY}px)) scale(${splitCanvasState.scale})`;
+            
+            // 保存原始图片并绘制边框
+            originalImage = img;
+            drawOverlay();
+        }
+        
+        function resetSplitView() {
+            const canvas = $('splitCanvas');
+            const container = $('splitCanvasContainer');
+            if (!canvas || !container || !splitCanvasState.currentImage) return;
+            
+            const img = new Image();
+            img.onload = () => {
+                const containerW = container.offsetWidth;
+                const containerH = container.offsetHeight;
+                const padding = 40;
+                
+                const scaleX = (containerW - padding) / img.width;
+                const scaleY = (containerH - padding) / img.height;
+                splitCanvasState.scale = Math.min(scaleX, scaleY, 1);
+                splitCanvasState.offsetX = 0;
+                splitCanvasState.offsetY = 0;
+                
+                drawSplitCanvas(img);
+            };
+            img.src = splitCanvasState.currentImage;
+        }
+        
+        // 切分画布缩放
+        $('splitCanvasContainer')?.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            splitCanvasState.scale = Math.max(0.1, Math.min(10, splitCanvasState.scale * delta));
+            const canvas = $('splitCanvas');
+            if (canvas) {
+                canvas.style.transform = `translate(calc(-50% + ${splitCanvasState.offsetX}px), calc(-50% + ${splitCanvasState.offsetY}px)) scale(${splitCanvasState.scale})`;
+            }
+            // 同时更新 overlay
+            drawOverlay();
+        });
+        
+        // 切分画布拖拽
+        $('splitCanvasContainer')?.addEventListener('mousedown', e => {
+            if (e.target.closest('.toolbar')) return;
+            splitCanvasState.isDragging = true;
+            splitCanvasState.lastX = e.clientX;
+            splitCanvasState.lastY = e.clientY;
+        });
+        
+        document.addEventListener('mousemove', e => {
+            if (!splitCanvasState.isDragging) return;
+            const dx = e.clientX - splitCanvasState.lastX;
+            const dy = e.clientY - splitCanvasState.lastY;
+            splitCanvasState.offsetX += dx;
+            splitCanvasState.offsetY += dy;
+            splitCanvasState.lastX = e.clientX;
+            splitCanvasState.lastY = e.clientY;
+            const canvas = $('splitCanvas');
+            if (canvas) {
+                canvas.style.transform = `translate(calc(-50% + ${splitCanvasState.offsetX}px), calc(-50% + ${splitCanvasState.offsetY}px)) scale(${splitCanvasState.scale})`;
+            }
+            drawOverlay();
+        });
+        
+        document.addEventListener('mouseup', () => {
+            splitCanvasState.isDragging = false;
+        });
+        
+        // 切分归位按钮
+        $('splitResetBtn')?.addEventListener('click', resetSplitView);
+        
+        // R 键归位
+        document.addEventListener('keydown', e => {
+            if (e.key === 'r' || e.key === 'R') {
+                if (state.currentTab === 'split') resetSplitView();
+            }
+        });
+        
+        // 切分背景色切换
+        document.querySelectorAll('[data-split-bg]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-split-bg]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                splitCanvasState.bgMode = btn.dataset.splitBg;
+                updateSplitCanvasBackground();
+            });
+        });
+        
+        function updateSplitCanvasBackground() {
+            const container = $('splitCanvasContainer');
+            if (!container) return;
+            
+            container.style.backgroundColor = '';
+            container.style.backgroundImage = '';
+            
+            switch (splitCanvasState.bgMode) {
+                case 'checker':
+                    container.style.backgroundImage = 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)';
+                    container.style.backgroundSize = '20px 20px';
+                    container.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
+                    container.style.backgroundColor = '#ffffff';
+                    break;
+                case 'white':
+                    container.style.backgroundColor = '#ffffff';
+                    break;
+                case 'black':
+                    container.style.backgroundColor = '#000000';
+                    break;
+            }
+        }
         
