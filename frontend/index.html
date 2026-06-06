@@ -5,6 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>图片元素拆分工具</title>
     <style>
+        /* ============ 设计系统 ============ */
+        :root {
+            /* 颜色 - 语义化 Token */
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f5f5f5;
+            --bg-hover: #f0f0f0;
+            --bg-active: #e8e8e8;
+            
+            --text-primary: #171717;
+            --text-secondary: #525252;
+            --text-tertiary: #a3a3a3;
+            --text-inverse: #ffffff;
+            
+            --border-primary: #e5e5e5;
+            --border-secondary: #d4d4d4;
+            --border-focus: #2563eb;
+            
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-light: #eff6ff;
+            --accent-text: #1d4ed8;
+            
+            --success: #16a34a;
+            --success-light: #f0fdf4;
+            --warning: #d97706;
+            --warning-light: #fffbeb;
+            --danger: #dc2626;
+            --danger-light: #fef2f2;
+            
+            /* 间距 - 8px 网格 */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --space-10: 40px;
+            --space-12: 48px;
+            
+            /* 圆角 */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            
+            /* 阴影 */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            
+            /* 字体 */
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            
+            /* 字号 */
+            --text-xs: 11px;
+            --text-sm: 12px;
+            --text-base: 13px;
+            --text-md: 14px;
+            --text-lg: 16px;
+            --text-xl: 18px;
+            
+            /* 动画 */
+            --duration-fast: 150ms;
+            --duration-normal: 200ms;
+            --duration-slow: 300ms;
+            --easing: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* ============ 重置 ============ */
         * {
             margin: 0;
             padding: 0;
@@ -12,866 +84,1428 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
+            font-family: var(--font-sans);
+            font-size: var(--text-base);
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
         
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            font-size: 24px;
-            color: #1a1a1a;
-        }
-        
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 20px;
-        }
-        
-        .preview-area {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            min-height: 500px;
-        }
-        
-        .parameter-panel {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .upload-area {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 40px;
-            text-align: center;
+        button {
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s;
+            border: none;
+            background: none;
         }
         
-        .upload-area:hover {
-            border-color: #007AFF;
-            background: #f0f8ff;
+        input, select {
+            font-family: inherit;
+            font-size: inherit;
         }
         
-        .upload-area.dragover {
-            border-color: #007AFF;
-            background: #e6f2ff;
+        /* ============ 布局 ============ */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        /* 头部 */
+        .header {
+            height: 48px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            padding: 0 var(--space-4);
+            gap: var(--space-4);
+            flex-shrink: 0;
+        }
+        
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-weight: 600;
+            font-size: var(--text-md);
+            color: var(--text-primary);
+        }
+        
+        .header-brand svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent);
+        }
+        
+        /* Tab 导航 */
+        .nav-tabs {
+            display: flex;
+            gap: var(--space-1);
+            background: var(--bg-tertiary);
+            padding: 3px;
+            border-radius: var(--radius-md);
+        }
+        
+        .nav-tab {
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all var(--duration-fast) var(--easing);
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            min-height: 32px;
+        }
+        
+        .nav-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+        
+        .nav-tab.active {
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .nav-tab .badge {
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: var(--accent);
+            color: var(--text-inverse);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .header-spacer {
+            flex: 1;
+        }
+        
+        .header-info {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
+        }
+        
+        /* 主内容 */
+        .main {
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .panel {
+            display: none;
+            height: 100%;
+        }
+        
+        .panel.active {
+            display: flex;
+        }
+        
+        /* 面板布局 */
+        .panel-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .panel-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .panel-sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-primary);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        
+        /* 预览区 */
+        .preview-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-6);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .preview-area img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+        }
+        
+        /* 上传区 */
+        .upload-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-3);
+            padding: var(--space-10);
+            border: 2px dashed var(--border-secondary);
+            border-radius: var(--radius-xl);
+            cursor: pointer;
+            transition: all var(--duration-normal) var(--easing);
+            max-width: 400px;
+        }
+        
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+        
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            transform: scale(1.02);
         }
         
         .upload-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-lg);
+            background: var(--accent-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .upload-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--accent);
         }
         
         .upload-text {
-            color: #666;
+            font-size: var(--text-md);
+            font-weight: 500;
+            color: var(--text-primary);
         }
         
-        #imagePreview {
-            max-width: 100%;
-            max-height: 400px;
-            object-fit: contain;
-            display: none;
+        .upload-hint {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
         }
         
-        .parameter-group {
-            margin-bottom: 20px;
+        /* 元素条 */
+        .elements-bar {
+            height: 100px;
+            border-top: 1px solid var(--border-primary);
+            background: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
         }
         
-        .parameter-group h3 {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
+        .elements-header {
+            height: 36px;
+            padding: 0 var(--space-4);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-primary);
+        }
+        
+        .elements-title {
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
-        .parameter {
-            margin-bottom: 15px;
+        .elements-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
         }
         
-        .parameter label {
-            display: block;
-            font-size: 13px;
-            color: #444;
-            margin-bottom: 5px;
+        .elements-count {
+            font-size: var(--text-sm);
+            color: var(--text-tertiary);
         }
         
-        .parameter input[type="range"] {
+        .btn-sm {
+            height: 28px;
+            padding: 0 var(--space-3);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            transition: all var(--duration-fast) var(--easing);
+        }
+        
+        .btn-sm-primary {
+            background: var(--accent);
+            color: var(--text-inverse);
+        }
+        
+        .btn-sm-primary:hover {
+            background: var(--accent-hover);
+        }
+        
+        .btn-sm-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-primary);
+        }
+        
+        .btn-sm-secondary:hover {
+            background: var(--bg-hover);
+        }
+        
+        .elements-scroll {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: var(--space-2) var(--space-4);
+            display: flex;
+            gap: var(--space-2);
+        }
+        
+        .element-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-primary);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all var(--duration-fast) var(--easing);
+            flex-shrink: 0;
+            position: relative;
+        }
+        
+        .element-thumb:hover {
+            border-color: var(--accent);
+        }
+        
+        .element-thumb.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-light);
+        }
+        
+        .element-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: var(--bg-tertiary);
+        }
+        
+        .element-thumb .num {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* 侧边栏 */
+        .sidebar-section {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--border-primary);
+        }
+        
+        .sidebar-section:last-child {
+            border-bottom: none;
+        }
+        
+        .sidebar-title {
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-3);
+        }
+        
+        /* 表单控件 */
+        .form-select {
+            width: 100%;
+            height: 36px;
+            padding: 0 var(--space-3);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: var(--text-base);
+            outline: none;
+            cursor: pointer;
+            transition: border-color var(--duration-fast) var(--easing);
+        }
+        
+        .form-select:focus {
+            border-color: var(--accent);
+        }
+        
+        .form-range {
             width: 100%;
             height: 4px;
             -webkit-appearance: none;
-            background: #ddd;
+            background: var(--border-primary);
             border-radius: 2px;
             outline: none;
+            margin: var(--space-2) 0;
         }
         
-        .parameter input[type="range"]::-webkit-slider-thumb {
+        .form-range::-webkit-slider-thumb {
             -webkit-appearance: none;
             width: 16px;
             height: 16px;
-            background: #007AFF;
+            background: var(--accent);
             border-radius: 50%;
             cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: transform var(--duration-fast) var(--easing);
         }
         
-        .parameter .value {
-            display: inline-block;
-            float: right;
-            font-size: 13px;
-            color: #007AFF;
-            font-weight: 500;
+        .form-range::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
         }
         
-        .parameter select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+        .form-range::-webkit-slider-thumb:active {
+            transform: scale(1.1);
         }
         
-        .button-group {
+        .form-row {
+            margin-bottom: var(--space-3);
+        }
+        
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-label {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 20px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-1);
         }
         
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
+        .form-label span:first-child {
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+        }
+        
+        .form-label .value {
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--accent-text);
+            font-variant-numeric: tabular-nums;
+            min-width: 32px;
+            text-align: right;
+        }
+        
+        /* 预设按钮组 */
+        .preset-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-1);
+        }
+        
+        .preset-btn {
+            height: 28px;
+            padding: 0 var(--space-2);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-primary);
+            background: var(--bg-secondary);
+            font-size: var(--text-sm);
+            color: var(--text-secondary);
+            transition: all var(--duration-fast) var(--easing);
+        }
+        
+        .preset-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent-text);
+            background: var(--accent-light);
+        }
+        
+        /* 按钮 */
+        .btn {
+            height: 40px;
+            padding: 0 var(--space-4);
+            border-radius: var(--radius-md);
+            font-size: var(--text-md);
             font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            transition: all var(--duration-fast) var(--easing);
+            width: 100%;
         }
         
-        button.primary {
-            background: #007AFF;
-            color: white;
+        .btn-primary {
+            background: var(--accent);
+            color: var(--text-inverse);
         }
         
-        button.primary:hover {
-            background: #0056b3;
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
         }
         
-        button.secondary {
-            background: #f0f0f0;
-            color: #333;
+        .btn-primary:disabled {
+            background: var(--border-primary);
+            color: var(--text-tertiary);
+            cursor: not-allowed;
         }
         
-        button.secondary:hover {
-            background: #e0e0e0;
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-primary);
         }
         
-        button:disabled {
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-hover);
+        }
+        
+        .btn-secondary:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
         
-        .results-section {
-            grid-column: 1 / -1;
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            padding: var(--space-4);
+            border-top: 1px solid var(--border-primary);
+            margin-top: auto;
         }
         
+        /* 结果网格 */
         .results-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-4);
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: var(--space-3);
+            align-content: start;
         }
         
         .result-card {
-            background: #f9f9f9;
-            border-radius: 6px;
-            padding: 10px;
-            text-align: center;
+            aspect-ratio: 1;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-primary);
+            overflow: hidden;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--duration-fast) var(--easing);
+            position: relative;
+            background: var(--bg-tertiary);
         }
         
         .result-card:hover {
-            background: #f0f0f0;
+            border-color: var(--accent);
             transform: translateY(-2px);
-        }
-        
-        .preset-btn {
-            padding: 6px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: #fff;
-            color: #333;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .preset-btn:hover {
-            background: #007AFF;
-            color: #fff;
-            border-color: #007AFF;
+            box-shadow: var(--shadow-md);
         }
         
         .result-card img {
-            max-width: 100%;
-            max-height: 120px;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
         }
         
         .result-card .label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 8px;
-        }
-        
-        .status-bar {
-            background: white;
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin-top: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .status-text {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .status-text.success {
-            color: #34C759;
-        }
-        
-        .status-text.error {
-            color: #FF3B30;
-        }
-        
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #ddd;
-            border-top-color: #007AFF;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        /* Modal for enlarged preview */
-        .modal {
-            position: fixed;
-            top: 0;
+            position: absolute;
+            bottom: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            right: 0;
+            padding: var(--space-1) var(--space-2);
+            background: linear-gradient(transparent, rgba(0,0,0,0.6));
+            color: #fff;
+            font-size: var(--text-xs);
+            text-align: center;
+            font-weight: 500;
         }
         
-        .modal img {
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
+        /* 状态栏 */
+        .status-bar {
+            height: 28px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-primary);
+            padding: 0 var(--space-4);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: var(--text-xs);
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+        
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        
+        .status-dot.loading {
+            background: var(--warning);
+            animation: pulse 1s infinite;
+        }
+        
+        .status-dot.error {
+            background: var(--danger);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-3);
+            padding: var(--space-10);
+            color: var(--text-tertiary);
+        }
+        
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            opacity: 0.5;
+        }
+        
+        .empty-state p {
+            font-size: var(--text-md);
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+        
+        .modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
         }
         
         .modal-close {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
+            top: -40px;
+            right: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--duration-fast) var(--easing);
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .modal-close svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-secondary);
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+        
+        /* 辅助类 */
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎨 图片元素拆分工具</h1>
-            <p style="color: #666; margin-top: 8px;">从元素板图片中自动检测并裁剪出每个独立元素，然后逐个去背景导出透明 PNG</p>
+    <div class="app">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="header-brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 3v18"/>
+                    <path d="M15 3v18"/>
+                    <path d="M3 9h18"/>
+                    <path d="M3 15h18"/>
+                </svg>
+                元素拆分工具
+            </div>
+            
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-panel="split">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                    </svg>
+                    切分
+                    <span class="badge hidden" id="splitBadge">0</span>
+                </button>
+                <button class="nav-tab" data-panel="remove">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    抠图
+                    <span class="badge hidden" id="removeBadge">0</span>
+                </button>
+            </nav>
+            
+            <div class="header-spacer"></div>
+            <div class="header-info">v1.0</div>
         </header>
         
-        <div class="main-content">
-            <div class="preview-area">
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📁</div>
-                    <div class="upload-text">
-                        <p>拖拽图片到此处，或点击上传</p>
-                        <p style="font-size: 12px; color: #999; margin-top: 5px;">支持 PNG, JPG, WebP</p>
+        <!-- 主内容 -->
+        <main class="main">
+            <!-- 切分面板 -->
+            <div class="panel active" id="panel-split">
+                <div class="panel-layout">
+                    <div class="panel-content">
+                        <div class="preview-area" id="splitPreview">
+                            <div class="upload-zone" id="uploadZone">
+                                <div class="upload-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                </div>
+                                <div class="upload-text">拖拽图片到此处</div>
+                                <div class="upload-hint">或点击选择文件 · 支持 PNG、JPG、WebP</div>
+                            </div>
+                            <img id="splitImage" class="hidden">
+                        </div>
+                        <div class="elements-bar hidden" id="splitBar">
+                            <div class="elements-header">
+                                <span class="elements-title">检测到的元素</span>
+                                <div class="elements-actions">
+                                    <span class="elements-count" id="splitCount">0 个</span>
+                                    <button class="btn-sm btn-sm-primary" id="sendToRemBtn">
+                                        发送到抠图
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M5 12h14"/>
+                                            <path d="m12 5 7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="elements-scroll" id="splitList"></div>
+                        </div>
                     </div>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
-                </div>
-                <img id="imagePreview" src="" alt="预览" style="display: none;">
-                <canvas id="canvasPreview" style="display: none; max-width: 100%;"></canvas>
-            </div>
-            
-            <div class="parameter-panel">
-                <div class="parameter-group">
-                    <h3>检测方法</h3>
-                    <div class="parameter">
-                        <select id="detectionMethod">
-                            <option value="smart">智能检测（推荐）</option>
-                            <option value="canny">Canny 边缘检测</option>
-                            <option value="flood">泛洪填充</option>
-                            <option value="alpha">Alpha 通道</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- 预设方案 -->
-                <div class="parameter-group">
-                    <h3>快速预设</h3>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                        <button class="preset-btn" onclick="applyPreset('general')">通用</button>
-                        <button class="preset-btn" onclick="applyPreset('sticker')">贴纸/图标</button>
-                        <button class="preset-btn" onclick="applyPreset('sprite')">游戏精灵</button>
-                        <button class="preset-btn" onclick="applyPreset('handdrawn')">手绘插画</button>
-                        <button class="preset-btn" onclick="applyPreset('solid')">纯色背景</button>
-                    </div>
-                </div>
-                
-                <!-- Smart Parameters -->
-                <div id="smartParams" class="parameter-group">
-                    <h3>智能检测参数</h3>
-                    <div class="parameter">
-                        <select id="smart_mode">
-                            <option value="auto">自动选择</option>
-                            <option value="color">颜色分割</option>
-                            <option value="threshold">自适应阈值</option>
-                            <option value="edge">增强边缘</option>
-                        </select>
-                    </div>
-                    <div class="parameter">
-                        <label>灵敏度 <span class="value" id="sensitivity_val">50</span></label>
-                        <input type="range" id="sensitivity" min="10" max="90" value="50">
-                    </div>
-                    <div class="parameter">
-                        <label>最小面积 <span class="value" id="min_area_val">500</span></label>
-                        <input type="range" id="min_area" min="100" max="5000" step="100" value="500">
-                    </div>
-                    <div class="parameter">
-                        <label>合并距离 <span class="value" id="merge_distance_val">20</span></label>
-                        <input type="range" id="merge_distance" min="0" max="100" step="5" value="20">
-                    </div>
-                </div>
-                
-                <!-- Canny Parameters -->
-                <div id="cannyParams" class="parameter-group hidden">
-                    <h3>Canny 参数</h3>
-                    <div class="parameter">
-                        <label>高斯模糊强度 <span class="value" id="gauss_sigma_val">1.0</span></label>
-                        <input type="range" id="gauss_sigma" min="0.5" max="5.0" step="0.1" value="1.0">
-                    </div>
-                    <div class="parameter">
-                        <label>模糊核大小 <span class="value" id="gauss_amount_val">5</span></label>
-                        <input type="range" id="gauss_amount" min="3" max="15" step="2" value="5">
-                    </div>
-                    <div class="parameter">
-                        <label>低阈值 <span class="value" id="threshold1_val">50</span></label>
-                        <input type="range" id="threshold1" min="30" max="150" value="50">
-                    </div>
-                    <div class="parameter">
-                        <label>高阈值 <span class="value" id="threshold2_val">150</span></label>
-                        <input type="range" id="threshold2" min="80" max="300" value="150">
-                    </div>
-                    <div class="parameter">
-                        <label>结构核宽度 <span class="value" id="struct_k1_val">3</span></label>
-                        <input type="range" id="struct_k1" min="3" max="9" step="2" value="3">
-                    </div>
-                    <div class="parameter">
-                        <label>结构核高度 <span class="value" id="struct_k2_val">3</span></label>
-                        <input type="range" id="struct_k2" min="3" max="9" step="2" value="3">
-                    </div>
-                    <div class="parameter">
-                        <label>闭运算次数 <span class="value" id="close_iter_val">1</span></label>
-                        <input type="range" id="close_iter" min="0" max="5" value="1">
-                    </div>
-                    <div class="parameter">
-                        <label>膨胀次数 <span class="value" id="dilate_iter_val">1</span></label>
-                        <input type="range" id="dilate_iter" min="0" max="5" value="1">
-                    </div>
-                    <div class="parameter">
-                        <label>最小面积 <span class="value" id="min_area_val">500</span></label>
-                        <input type="range" id="min_area" min="100" max="5000" step="100" value="500">
-                    </div>
-                    <div class="parameter">
-                        <label>合并距离 <span class="value" id="merge_distance_val">20</span></label>
-                        <input type="range" id="merge_distance" min="0" max="100" step="5" value="20">
-                    </div>
-                </div>
-                
-                <!-- Flood Parameters -->
-                <div id="floodParams" class="parameter-group hidden">
-                    <h3>泛洪填充参数</h3>
-                    <div class="parameter">
-                        <label>颜色容差 <span class="value" id="flood_tolerance_val">30</span></label>
-                        <input type="range" id="flood_tolerance" min="10" max="100" value="30">
-                    </div>
-                    <div class="parameter">
-                        <label>最小面积 <span class="value" id="min_area_val">100</span></label>
-                        <input type="range" id="min_area" min="10" max="1000" step="10" value="100">
-                    </div>
-                    <div class="parameter">
-                        <label>Padding <span class="value" id="padding_val">5</span></label>
-                        <input type="range" id="padding" min="0" max="20" value="5">
-                    </div>
-                </div>
-                
-                <!-- Alpha Parameters -->
-                <div id="alphaParams" class="parameter-group hidden">
-                    <h3>Alpha 通道参数</h3>
-                    <div class="parameter">
-                        <label>Alpha 阈值 <span class="value" id="alpha_threshold_val">30</span></label>
-                        <input type="range" id="alpha_threshold" min="0" max="255" value="30">
-                    </div>
-                </div>
-                
-                <div class="button-group">
-                    <button id="detectBtn" class="primary" disabled>🔍 开始检测</button>
-                    <button id="removeBgBtn" class="secondary" disabled>✂️ 去除背景</button>
-                    <button id="exportBtn" class="secondary" disabled>📦 导出 ZIP</button>
-                </div>
-                
-                <div class="parameter-group" style="margin-top: 20px;">
-                    <h3>抠图方法</h3>
-                    <div class="parameter">
-                        <select id="removalMethod">
-                            <option value="rembg">rembg AI 抠图</option>
-                            <option value="flood">泛洪填充抠图</option>
-                            <option value="combined">双重抠图（推荐）</option>
-                        </select>
-                    </div>
-                    <div class="parameter">
-                        <label>rembg 模型</label>
-                        <select id="rembgModel">
-                            <option value="u2net">u2net（通用）</option>
-                            <option value="u2netp">u2netp（轻量）</option>
-                            <option value="isnet-general-use">isnet（新版更准）</option>
-                            <option value="silueta">silueta（精细边缘）</option>
-                        </select>
+                    <div class="panel-sidebar">
+                        <div class="sidebar-section">
+                            <div class="sidebar-title">检测方法</div>
+                            <select class="form-select" id="detectMethod">
+                                <option value="smart">智能检测</option>
+                                <option value="canny">Canny 边缘</option>
+                                <option value="flood">泛洪填充</option>
+                                <option value="alpha">Alpha 通道</option>
+                            </select>
+                        </div>
+                        <div class="sidebar-section">
+                            <div class="sidebar-title">快速预设</div>
+                            <div class="preset-group">
+                                <button class="preset-btn" data-preset="sticker">贴纸/图标</button>
+                                <button class="preset-btn" data-preset="sprite">游戏精灵</button>
+                                <button class="preset-btn" data-preset="handdrawn">手绘插画</button>
+                                <button class="preset-btn" data-preset="solid">纯色背景</button>
+                            </div>
+                        </div>
+                        <div class="sidebar-section" id="smartSection">
+                            <div class="sidebar-title">智能检测</div>
+                            <div class="form-row">
+                                <select class="form-select" id="smartMode">
+                                    <option value="auto">自动选择</option>
+                                    <option value="color">颜色分割</option>
+                                    <option value="threshold">自适应阈值</option>
+                                    <option value="edge">增强边缘</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>灵敏度</span>
+                                    <span class="value" id="sensitivityVal">50</span>
+                                </div>
+                                <input type="range" class="form-range" id="sensitivity" min="10" max="90" value="50">
+                            </div>
+                        </div>
+                        <div class="sidebar-section hidden" id="cannySection">
+                            <div class="sidebar-title">Canny 参数</div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>高斯模糊</span>
+                                    <span class="value" id="gaussSigmaVal">1.0</span>
+                                </div>
+                                <input type="range" class="form-range" id="gaussSigma" min="0.5" max="5" step="0.1" value="1.0">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>低阈值</span>
+                                    <span class="value" id="threshold1Val">50</span>
+                                </div>
+                                <input type="range" class="form-range" id="threshold1" min="30" max="150" value="50">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>高阈值</span>
+                                    <span class="value" id="threshold2Val">150</span>
+                                </div>
+                                <input type="range" class="form-range" id="threshold2" min="80" max="300" value="150">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>闭运算</span>
+                                    <span class="value" id="closeIterVal">1</span>
+                                </div>
+                                <input type="range" class="form-range" id="closeIter" min="0" max="5" value="1">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>膨胀</span>
+                                    <span class="value" id="dilateIterVal">1</span>
+                                </div>
+                                <input type="range" class="form-range" id="dilateIter" min="0" max="5" value="1">
+                            </div>
+                        </div>
+                        <div class="sidebar-section hidden" id="floodSection">
+                            <div class="sidebar-title">泛洪填充</div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>颜色容差</span>
+                                    <span class="value" id="floodTolVal">30</span>
+                                </div>
+                                <input type="range" class="form-range" id="floodTol" min="10" max="100" value="30">
+                            </div>
+                        </div>
+                        <div class="sidebar-section">
+                            <div class="sidebar-title">通用参数</div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>最小面积</span>
+                                    <span class="value" id="minAreaVal">500</span>
+                                </div>
+                                <input type="range" class="form-range" id="minArea" min="100" max="5000" step="100" value="500">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>合并距离</span>
+                                    <span class="value" id="mergeDistVal">20</span>
+                                </div>
+                                <input type="range" class="form-range" id="mergeDist" min="0" max="100" step="5" value="20">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <div class="results-section">
-                <h2>检测结果 <span id="resultCount" style="font-weight: normal; color: #666;"></span></h2>
-                <div class="results-grid" id="resultsGrid">
-                    <!-- Results will be inserted here -->
+            <!-- 抠图面板 -->
+            <div class="panel" id="panel-remove">
+                <div class="panel-layout">
+                    <div class="panel-content">
+                        <div class="preview-area" id="removePreview">
+                            <div class="empty-state" id="removeEmpty">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <path d="m21 15-5-5L5 21"/>
+                                </svg>
+                                <p>从切分面板发送元素，或直接上传</p>
+                                <button class="btn btn-secondary" id="uploadElemBtn" style="width:auto; height:36px; padding:0 16px;">
+                                    上传元素图片
+                                </button>
+                            </div>
+                            <div class="results-grid hidden" id="removeResults"></div>
+                        </div>
+                        <div class="elements-bar hidden" id="removeBar">
+                            <div class="elements-header">
+                                <span class="elements-title">待处理元素</span>
+                                <div class="elements-actions">
+                                    <span class="elements-count" id="removeCount">0 个</span>
+                                    <button class="btn-sm btn-sm-secondary" id="selectAllBtn">全选</button>
+                                    <button class="btn-sm btn-sm-secondary" id="deselectBtn">取消</button>
+                                </div>
+                            </div>
+                            <div class="elements-scroll" id="removeList"></div>
+                        </div>
+                    </div>
+                    <div class="panel-sidebar">
+                        <div class="sidebar-section">
+                            <div class="sidebar-title">抠图方法</div>
+                            <select class="form-select" id="removeMethod">
+                                <option value="rembg">AI 抠图 (rembg)</option>
+                                <option value="flood">泛洪填充</option>
+                                <option value="combined">双重抠图</option>
+                            </select>
+                        </div>
+                        <div class="sidebar-section" id="rembgSection">
+                            <div class="sidebar-title">AI 模型</div>
+                            <select class="form-select" id="rembgModel">
+                                <option value="u2net">u2net (通用)</option>
+                                <option value="u2netp">u2netp (轻量)</option>
+                                <option value="isnet-general-use">isnet (新版)</option>
+                                <option value="silueta">silueta (精细)</option>
+                            </select>
+                        </div>
+                        <div class="sidebar-section hidden" id="removeFloodSection">
+                            <div class="sidebar-title">泛洪参数</div>
+                            <div class="form-row">
+                                <div class="form-label">
+                                    <span>颜色容差</span>
+                                    <span class="value" id="remFloodTolVal">30</span>
+                                </div>
+                                <input type="range" class="form-range" id="remFloodTol" min="10" max="100" value="30">
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" id="processBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="m9 12 2 2 4-4"/>
+                                </svg>
+                                开始抠图
+                            </button>
+                            <button class="btn btn-secondary" id="exportBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                导出 ZIP
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </main>
         
-        <div class="status-bar">
-            <div class="status-text" id="statusText">就绪</div>
-            <div>
-                <span class="loading hidden" id="loading"></span>
+        <!-- 状态栏 -->
+        <footer class="status-bar">
+            <div class="status-left">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">就绪</span>
             </div>
+            <span id="statusInfo"></span>
+        </footer>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+            <img id="modalImg" src="">
         </div>
     </div>
     
-    <!-- Modal for enlarged preview -->
-    <div id="modal" class="modal hidden">
-        <span class="modal-close" id="modalClose">&times;</span>
-        <img id="modalImage" src="" alt="放大预览">
-    </div>
+    <!-- 隐藏输入 -->
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <input type="file" id="elemInput" accept="image/*" multiple style="display:none">
     
     <script>
-        const API_BASE = 'http://localhost:8001';
+        const API = 'http://localhost:8001';
         
-        // DOM elements
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const imagePreview = document.getElementById('imagePreview');
-        const canvasPreview = document.getElementById('canvasPreview');
-        const detectBtn = document.getElementById('detectBtn');
-        const removeBgBtn = document.getElementById('removeBgBtn');
-        const exportBtn = document.getElementById('exportBtn');
-        const resultsGrid = document.getElementById('resultsGrid');
-        const resultCount = document.getElementById('resultCount');
-        const statusText = document.getElementById('statusText');
-        const loading = document.getElementById('loading');
-        const modal = document.getElementById('modal');
-        const modalImage = document.getElementById('modalImage');
-        const modalClose = document.getElementById('modalClose');
+        // ============ 状态 ============
+        const state = {
+            splitImageId: null,
+            splitElements: [],
+            removeElements: []
+        };
         
-        // State
-        let currentImageId = null;
-        let detectionResults = [];
+        // ============ 工具函数 ============
+        const $ = id => document.getElementById(id);
+        const show = el => el.classList.remove('hidden');
+        const hide = el => el.classList.add('hidden');
         
-        // 防抖定时器
-        let detectTimer = null;
-        
-        // 实时检测函数
-        async function autoDetect() {
-            if (!currentImageId) return;
-            
-            // 清除之前的定时器
-            if (detectTimer) clearTimeout(detectTimer);
-            
-            // 设置新的定时器（300ms 防抖）
-            detectTimer = setTimeout(async () => {
-                await runDetection();
-            }, 300);
+        function setStatus(text, loading = false, error = false) {
+            $('statusText').textContent = text;
+            $('statusDot').className = 'status-dot' + (loading ? ' loading' : '') + (error ? ' error' : '');
         }
         
-        // Parameter sliders - 实时更新数值并触发检测
-        const sliders = document.querySelectorAll('input[type="range"]');
-        sliders.forEach(slider => {
-            const valueSpan = document.getElementById(slider.id + '_val');
-            if (valueSpan) {
+        function updateBadges() {
+            const splitSel = state.splitElements.filter(e => e.selected).length;
+            const removeSel = state.removeElements.filter(e => e.selected).length;
+            
+            const splitBadge = $('splitBadge');
+            const removeBadge = $('removeBadge');
+            
+            if (splitSel > 0) {
+                splitBadge.textContent = splitSel;
+                show(splitBadge);
+            } else {
+                hide(splitBadge);
+            }
+            
+            if (removeSel > 0) {
+                removeBadge.textContent = removeSel;
+                show(removeBadge);
+            } else {
+                hide(removeBadge);
+            }
+        }
+        
+        // ============ Tab 切换 ============
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                $(`panel-${tab.dataset.panel}`).classList.add('active');
+            });
+        });
+        
+        function switchTab(name) {
+            document.querySelector(`.nav-tab[data-panel="${name}"]`).click();
+        }
+        
+        // ============ 切分面板 ============
+        
+        // 上传
+        $('uploadZone').addEventListener('click', () => $('fileInput').click());
+        $('uploadZone').addEventListener('dragover', e => {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        });
+        $('uploadZone').addEventListener('dragleave', e => {
+            e.currentTarget.classList.remove('dragover');
+        });
+        $('uploadZone').addEventListener('drop', e => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) uploadImage(e.dataTransfer.files[0]);
+        });
+        $('fileInput').addEventListener('change', e => {
+            if (e.target.files[0]) uploadImage(e.target.files[0]);
+        });
+        
+        async function uploadImage(file) {
+            setStatus('上传中...', true);
+            const fd = new FormData();
+            fd.append('file', file);
+            
+            try {
+                const res = await fetch(`${API}/api/upload`, { method: 'POST', body: fd });
+                if (!res.ok) throw new Error('上传失败');
+                const data = await res.json();
+                
+                state.splitImageId = data.image_id;
+                $('splitImage').src = data.preview;
+                show($('splitImage'));
+                hide($('uploadZone'));
+                
+                setStatus(`${data.filename} (${data.width}×${data.height})`);
+                runDetection();
+            } catch (err) {
+                setStatus(err.message, false, true);
+            }
+        }
+        
+        // 参数滑块
+        document.querySelectorAll('#panel-split .form-range').forEach(slider => {
+            const valEl = $(slider.id + 'Val');
+            if (valEl) {
                 slider.addEventListener('input', () => {
-                    valueSpan.textContent = slider.value;
+                    valEl.textContent = slider.value;
                     autoDetect();
                 });
             }
         });
         
-        // Detection method change
-        const detectionMethod = document.getElementById('detectionMethod');
-        detectionMethod.addEventListener('change', () => {
-            document.getElementById('smartParams').classList.toggle('hidden', detectionMethod.value !== 'smart');
-            document.getElementById('cannyParams').classList.toggle('hidden', detectionMethod.value !== 'canny');
-            document.getElementById('floodParams').classList.toggle('hidden', detectionMethod.value !== 'flood');
-            document.getElementById('alphaParams').classList.toggle('hidden', detectionMethod.value !== 'alpha');
+        // 方法切换
+        $('detectMethod').addEventListener('change', e => {
+            const m = e.target.value;
+            $('smartSection').classList.toggle('hidden', m !== 'smart');
+            $('cannySection').classList.toggle('hidden', m !== 'canny');
+            $('floodSection').classList.toggle('hidden', m !== 'flood');
             autoDetect();
         });
         
-        // 预设方案
-        function applyPreset(preset) {
-            const presets = {
-                'general': { method: 'smart', smart_mode: 'auto', sensitivity: 50, min_area: 500, merge_distance: 20 },
-                'sticker': { method: 'smart', smart_mode: 'color', sensitivity: 60, min_area: 300, merge_distance: 30 },
-                'sprite': { method: 'canny', gauss_sigma: 1.0, gauss_amount: 5, threshold1: 50, threshold2: 150, struct_k1: 3, struct_k2: 3, close_iter: 2, dilate_iter: 2, min_area: 200, merge_distance: 15 },
-                'handdrawn': { method: 'smart', smart_mode: 'edge', sensitivity: 40, min_area: 800, merge_distance: 25 },
-                'solid': { method: 'flood', flood_tolerance: 50, min_area: 300, padding: 10 }
-            };
-            
-            const p = presets[preset];
-            if (!p) return;
-            
-            // 设置检测方法
-            document.getElementById('detectionMethod').value = p.method;
-            detectionMethod.dispatchEvent(new Event('change'));
-            
-            // 设置参数
-            for (const [key, value] of Object.entries(p)) {
-                if (key === 'method') continue;
-                const el = document.getElementById(key);
-                if (el) {
-                    el.value = value;
-                    const valEl = document.getElementById(key + '_val');
-                    if (valEl) valEl.textContent = value;
+        $('smartMode').addEventListener('change', autoDetect);
+        
+        // 预设
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const presets = {
+                    sticker: { method: 'smart', smartMode: 'color', sensitivity: 60, minArea: 300, mergeDist: 30 },
+                    sprite: { method: 'canny', gaussSigma: 1.0, threshold1: 50, threshold2: 150, closeIter: 2, dilateIter: 2, minArea: 200, mergeDist: 15 },
+                    handdrawn: { method: 'smart', smartMode: 'edge', sensitivity: 40, minArea: 800, mergeDist: 25 },
+                    solid: { method: 'flood', floodTol: 50, minArea: 300 }
+                };
+                const p = presets[btn.dataset.preset];
+                if (!p) return;
+                
+                $('detectMethod').value = p.method;
+                $('detectMethod').dispatchEvent(new Event('change'));
+                
+                for (const [k, v] of Object.entries(p)) {
+                    if (k === 'method') continue;
+                    const el = $(k);
+                    if (el) {
+                        el.value = v;
+                        const valEl = $(k + 'Val');
+                        if (valEl) valEl.textContent = v;
+                    }
                 }
-            }
-            
-            autoDetect();
+                autoDetect();
+            });
+        });
+        
+        // 防抖检测
+        let detectTimer = null;
+        function autoDetect() {
+            if (!state.splitImageId) return;
+            clearTimeout(detectTimer);
+            detectTimer = setTimeout(runDetection, 300);
         }
         
-        // Upload area events
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) uploadFile(file);
-        });
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) uploadFile(file);
-        });
-        
-        // Upload file
-        async function uploadFile(file) {
-            setStatus('上传中...', false);
-            loading.classList.remove('hidden');
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) throw new Error('上传失败');
-                
-                const data = await response.json();
-                currentImageId = data.image_id;
-                
-                // Show preview
-                imagePreview.src = data.preview;
-                imagePreview.style.display = 'block';
-                uploadArea.style.display = 'none';
-                
-                // Enable buttons
-                detectBtn.disabled = false;
-                
-                setStatus(`上传成功: ${data.filename} (${data.width}x${data.height})`, true);
-                
-                // 自动触发第一次检测
-                setTimeout(() => runDetection(), 100);
-            } catch (error) {
-                setStatus(`上传失败: ${error.message}`, false, true);
-            } finally {
-                loading.classList.add('hidden');
-            }
-        }
-        
-        // 检测函数（供按钮和实时检测调用）
         let isDetecting = false;
         async function runDetection() {
-            if (!currentImageId || isDetecting) return;
-            
+            if (!state.splitImageId || isDetecting) return;
             isDetecting = true;
-            setStatus('检测中...', false);
+            setStatus('检测中...', true);
             
-            const formData = new FormData();
-            formData.append('image_id', currentImageId);
-            formData.append('method', detectionMethod.value);
+            const method = $('detectMethod').value;
+            const fd = new FormData();
+            fd.append('image_id', state.splitImageId);
+            fd.append('method', method);
             
-            // Add parameters based on method
-            if (detectionMethod.value === 'smart') {
-                formData.append('smart_mode', document.getElementById('smart_mode').value);
-                formData.append('sensitivity', document.getElementById('sensitivity').value);
-                formData.append('min_area', document.getElementById('min_area').value);
-                formData.append('merge_distance', document.getElementById('merge_distance').value);
-            } else if (detectionMethod.value === 'canny') {
-                formData.append('gauss_sigma', document.getElementById('gauss_sigma').value);
-                formData.append('gauss_amount', document.getElementById('gauss_amount').value);
-                formData.append('threshold1', document.getElementById('threshold1').value);
-                formData.append('threshold2', document.getElementById('threshold2').value);
-                formData.append('struct_k1', document.getElementById('struct_k1').value);
-                formData.append('struct_k2', document.getElementById('struct_k2').value);
-                formData.append('close_iter', document.getElementById('close_iter').value);
-                formData.append('dilate_iter', document.getElementById('dilate_iter').value);
-                formData.append('min_area', document.getElementById('min_area').value);
-                formData.append('merge_distance', document.getElementById('merge_distance').value);
-            } else if (detectionMethod.value === 'flood') {
-                formData.append('flood_tolerance', document.getElementById('flood_tolerance').value);
-                formData.append('min_area', document.getElementById('min_area').value);
-                formData.append('padding', document.getElementById('padding').value);
-            } else if (detectionMethod.value === 'alpha') {
-                formData.append('alpha_threshold', document.getElementById('alpha_threshold').value);
+            if (method === 'smart') {
+                fd.append('smart_mode', $('smartMode').value);
+                fd.append('sensitivity', $('sensitivity').value);
+                fd.append('min_area', $('minArea').value);
+                fd.append('merge_distance', $('mergeDist').value);
+            } else if (method === 'canny') {
+                fd.append('gauss_sigma', $('gaussSigma').value);
+                fd.append('threshold1', $('threshold1').value);
+                fd.append('threshold2', $('threshold2').value);
+                fd.append('close_iter', $('closeIter').value);
+                fd.append('dilate_iter', $('dilateIter').value);
+                fd.append('min_area', $('minArea').value);
+                fd.append('merge_distance', $('mergeDist').value);
+            } else if (method === 'flood') {
+                fd.append('flood_tolerance', $('floodTol').value);
+                fd.append('min_area', $('minArea').value);
             }
             
             try {
-                const response = await fetch(`${API_BASE}/api/detect`, {
-                    method: 'POST',
-                    body: formData
-                });
+                const res = await fetch(`${API}/api/detect`, { method: 'POST', body: fd });
+                if (!res.ok) throw new Error('检测失败');
+                const data = await res.json();
                 
-                if (!response.ok) throw new Error('检测失败');
-                
-                const data = await response.json();
-                detectionResults = data.bboxes;
-                
-                // Update preview
-                imagePreview.src = data.preview;
-                
-                // Update results grid with element previews
-                updateResultsGrid(data.elements || []);
-                
-                // Enable buttons
-                removeBgBtn.disabled = false;
-                exportBtn.disabled = false;
-                detectBtn.disabled = false;
-                
-                setStatus(`检测完成，找到 ${data.count} 个元素`, true);
-            } catch (error) {
-                setStatus(`检测失败: ${error.message}`, false, true);
+                $('splitImage').src = data.preview;
+                state.splitElements = (data.elements || []).map(el => ({ ...el, selected: true }));
+                renderSplitElements();
+                setStatus(`找到 ${data.count} 个元素`);
+            } catch (err) {
+                setStatus(err.message, false, true);
             } finally {
                 isDetecting = false;
             }
         }
         
-        // Detect elements - 按钮点击
-        detectBtn.addEventListener('click', () => runDetection());
-        
-        // Update results grid
-        function updateResultsGrid(elements) {
-            resultsGrid.innerHTML = '';
-            resultCount.textContent = `(${elements.length} 个)`;
+        function renderSplitElements() {
+            const has = state.splitElements.length > 0;
+            $('splitBar').classList.toggle('hidden', !has);
+            $('splitCount').textContent = `${state.splitElements.length} 个`;
             
-            elements.forEach((el, index) => {
+            const list = $('splitList');
+            list.innerHTML = '';
+            
+            state.splitElements.forEach(el => {
+                const div = document.createElement('div');
+                div.className = 'element-thumb' + (el.selected ? ' selected' : '');
+                div.innerHTML = `
+                    <img src="${el.preview}">
+                    <span class="num">${el.index}</span>
+                `;
+                div.addEventListener('click', () => {
+                    el.selected = !el.selected;
+                    div.classList.toggle('selected');
+                    updateBadges();
+                });
+                div.addEventListener('dblclick', () => {
+                    $('modalImg').src = el.preview;
+                    show($('modal'));
+                });
+                list.appendChild(div);
+            });
+            updateBadges();
+        }
+        
+        // 发送到抠图
+        $('sendToRemBtn').addEventListener('click', () => {
+            const sel = state.splitElements.filter(e => e.selected);
+            if (!sel.length) {
+                setStatus('请先选择元素', false, true);
+                return;
+            }
+            
+            state.removeElements = sel.map(el => ({
+                index: el.index,
+                preview: el.preview,
+                selected: true,
+                processed: false,
+                result: null
+            }));
+            
+            renderRemoveElements();
+            switchTab('remove');
+            setStatus(`已发送 ${sel.length} 个元素`);
+        });
+        
+        // ============ 抠图面板 ============
+        
+        // 上传元素
+        $('uploadElemBtn').addEventListener('click', () => $('elemInput').click());
+        $('elemInput').addEventListener('change', e => {
+            Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    state.removeElements.push({
+                        index: state.removeElements.length + 1,
+                        preview: reader.result,
+                        selected: true,
+                        processed: false,
+                        result: null
+                    });
+                    renderRemoveElements();
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+        
+        // 全选/取消
+        $('selectAllBtn').addEventListener('click', () => {
+            state.removeElements.forEach(e => e.selected = true);
+            renderRemoveElements();
+        });
+        $('deselectBtn').addEventListener('click', () => {
+            state.removeElements.forEach(e => e.selected = false);
+            renderRemoveElements();
+        });
+        
+        // 方法切换
+        $('removeMethod').addEventListener('change', e => {
+            const m = e.target.value;
+            $('rembgSection').classList.toggle('hidden', m !== 'rembg' && m !== 'combined');
+            $('removeFloodSection').classList.toggle('hidden', m !== 'flood' && m !== 'combined');
+        });
+        
+        $('remFloodTol').addEventListener('input', e => {
+            $('remFloodTolVal').textContent = e.target.value;
+        });
+        
+        function renderRemoveElements() {
+            const has = state.removeElements.length > 0;
+            $('removeEmpty').classList.toggle('hidden', has);
+            $('removeBar').classList.toggle('hidden', !has);
+            $('removeCount').textContent = `${state.removeElements.length} 个`;
+            $('processBtn').disabled = !has;
+            
+            const list = $('removeList');
+            list.innerHTML = '';
+            
+            state.removeElements.forEach(el => {
+                const div = document.createElement('div');
+                div.className = 'element-thumb' + (el.selected ? ' selected' : '');
+                div.innerHTML = `
+                    <img src="${el.processed ? el.result : el.preview}">
+                    <span class="num">${el.index}</span>
+                `;
+                div.addEventListener('click', () => {
+                    el.selected = !el.selected;
+                    div.classList.toggle('selected');
+                    updateBadges();
+                });
+                div.addEventListener('dblclick', () => {
+                    $('modalImg').src = el.processed ? el.result : el.preview;
+                    show($('modal'));
+                });
+                list.appendChild(div);
+            });
+            
+            // 更新结果网格
+            renderRemoveResults();
+            updateBadges();
+        }
+        
+        function renderRemoveResults() {
+            const processed = state.removeElements.filter(e => e.processed);
+            const grid = $('removeResults');
+            
+            if (processed.length === 0) {
+                hide(grid);
+                return;
+            }
+            
+            show(grid);
+            grid.innerHTML = '';
+            
+            processed.forEach(el => {
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 card.innerHTML = `
-                    <img src="${el.preview}" alt="元素 ${el.index}" style="max-width: 100%; max-height: 100px; object-fit: contain;">
+                    <img src="${el.result}">
                     <div class="label">元素 ${el.index}</div>
-                    <div class="label" style="font-size: 11px; color: #999;">${el.bbox[2]}x${el.bbox[3]}</div>
                 `;
                 card.addEventListener('click', () => {
-                    // Show enlarged preview
-                    modalImage.src = el.preview;
-                    modal.classList.remove('hidden');
+                    $('modalImg').src = el.result;
+                    show($('modal'));
                 });
-                resultsGrid.appendChild(card);
+                grid.appendChild(card);
             });
+            
+            $('exportBtn').disabled = false;
         }
         
-        // Show element preview (placeholder - would need actual cropped image)
-        function showElementPreview(index) {
-            // This would show the actual cropped element
-            // For now, just show a placeholder
-            alert(`显示元素 ${index + 1} 的放大预览`);
-        }
-        
-        // Remove background
-        removeBgBtn.addEventListener('click', async () => {
-            if (!currentImageId) return;
-            
-            setStatus('去除背景中...', false);
-            loading.classList.remove('hidden');
-            removeBgBtn.disabled = true;
-            
-            const formData = new FormData();
-            formData.append('image_id', currentImageId);
-            formData.append('method', document.getElementById('removalMethod').value);
-            formData.append('model', document.getElementById('rembgModel').value);
-            formData.append('flood_tolerance', document.getElementById('flood_tolerance').value);
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/remove_background`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) throw new Error('去除背景失败');
-                
-                const data = await response.json();
-                
-                // Update results grid with processed images
-                updateResultsGridWithProcessed(data.results);
-                
-                setStatus(`背景去除完成，处理了 ${data.count} 个元素`, true);
-            } catch (error) {
-                setStatus(`去除背景失败: ${error.message}`, false, true);
-            } finally {
-                loading.classList.add('hidden');
-                removeBgBtn.disabled = false;
+        // 开始抠图
+        $('processBtn').addEventListener('click', async () => {
+            const sel = state.removeElements.filter(e => e.selected);
+            if (!sel.length) {
+                setStatus('请先选择元素', false, true);
+                return;
             }
+            
+            $('processBtn').disabled = true;
+            setStatus(`抠图中 (0/${sel.length})...`, true);
+            
+            const method = $('removeMethod').value;
+            const model = $('rembgModel').value;
+            const floodTol = $('remFloodTol').value;
+            
+            for (let i = 0; i < sel.length; i++) {
+                setStatus(`抠图中 (${i + 1}/${sel.length})...`, true);
+                
+                try {
+                    const blob = await fetch(sel[i].preview).then(r => r.blob());
+                    const fd = new FormData();
+                    fd.append('file', blob, `el_${sel[i].index}.png`);
+                    
+                    const uploadRes = await fetch(`${API}/api/upload`, { method: 'POST', body: fd });
+                    const uploadData = await uploadRes.json();
+                    
+                    const detectFd = new FormData();
+                    detectFd.append('image_id', uploadData.image_id);
+                    detectFd.append('method', 'alpha');
+                    detectFd.append('alpha_threshold', '0');
+                    await fetch(`${API}/api/detect`, { method: 'POST', body: detectFd });
+                    
+                    const removeFd = new FormData();
+                    removeFd.append('image_id', uploadData.image_id);
+                    removeFd.append('method', method);
+                    removeFd.append('model', model);
+                    removeFd.append('flood_tolerance', floodTol);
+                    
+                    const removeRes = await fetch(`${API}/api/remove_background`, { method: 'POST', body: removeFd });
+                    const removeData = await removeRes.json();
+                    
+                    if (removeData.results?.[0]) {
+                        sel[i].processed = true;
+                        sel[i].result = removeData.results[0].preview;
+                    }
+                } catch (err) {
+                    console.error(`元素 ${sel[i].index} 失败:`, err);
+                }
+            }
+            
+            renderRemoveElements();
+            setStatus(`完成，处理了 ${sel.length} 个元素`);
+            $('processBtn').disabled = false;
         });
         
-        // Update results grid with processed images
-        function updateResultsGridWithProcessed(results) {
-            resultsGrid.innerHTML = '';
+        // 导出
+        $('exportBtn').addEventListener('click', () => {
+            const processed = state.removeElements.filter(e => e.processed);
+            if (!processed.length) return;
             
-            results.forEach((result, index) => {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                card.innerHTML = `
-                    <img src="${result.preview}" alt="元素 ${result.index}">
-                    <div class="label">元素 ${result.index}</div>
-                    <div class="label" style="font-size: 11px; color: #999;">${result.width}x${result.height}</div>
-                `;
-                card.addEventListener('click', () => {
-                    // Show enlarged preview
-                    modalImage.src = result.preview;
-                    modal.classList.remove('hidden');
-                });
-                resultsGrid.appendChild(card);
-            });
-        }
-        
-        // Export ZIP
-        exportBtn.addEventListener('click', async () => {
-            if (!currentImageId) return;
-            
-            setStatus('导出中...', false);
-            loading.classList.remove('hidden');
-            exportBtn.disabled = true;
-            
-            const formData = new FormData();
-            formData.append('image_id', currentImageId);
-            
-            try {
-                const response = await fetch(`${API_BASE}/api/export`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) throw new Error('导出失败');
-                
-                // Download ZIP
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
+            processed.forEach(el => {
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = 'elements.zip';
-                document.body.appendChild(a);
+                a.href = el.result;
+                a.download = `element_${el.index}.png`;
                 a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-                
-                setStatus('导出完成', true);
-            } catch (error) {
-                setStatus(`导出失败: ${error.message}`, false, true);
-            } finally {
-                loading.classList.add('hidden');
-                exportBtn.disabled = false;
-            }
+            });
+            
+            setStatus(`已导出 ${processed.length} 个元素`);
         });
         
-        // Modal close
-        modalClose.addEventListener('click', () => {
-            modal.classList.add('hidden');
+        // ============ Modal ============
+        $('modalClose').addEventListener('click', () => hide($('modal')));
+        $('modal').addEventListener('click', e => {
+            if (e.target === $('modal')) hide($('modal'));
         });
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
-        });
-        
-        // Set status
-        function setStatus(text, success = false, error = false) {
-            statusText.textContent = text;
-            statusText.className = 'status-text';
-            if (success) statusText.classList.add('success');
-            if (error) statusText.classList.add('error');
-        }
     </script>
 </body>
 </html>
