@@ -403,6 +403,20 @@
         $('selectRemAll').addEventListener('click', () => { state.removeElements.forEach(e => e.selected = true); renderRemoveElements(); });
         $('deselectRemAll').addEventListener('click', () => { state.removeElements.forEach(e => e.selected = false); renderRemoveElements(); });
         
+        // 换图按钮 - 清空并上传新图片
+        $('removeReupload').addEventListener('click', () => {
+            state.removeElements = [];
+            canvasState.currentElement = null;
+            canvasState.currentImage = null;
+            const canvas = $('removeCanvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            renderRemoveElements();
+            $('elemInput').click();
+        });
+        
         $('removeMethod').addEventListener('change', e => {
             const m = e.target.value;
             $('secRembg').classList.toggle('hidden', m === 'flood' || m === 'color_pick');

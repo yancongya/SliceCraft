@@ -18,6 +18,21 @@
         $('uploadZone').addEventListener('drop', e => { e.preventDefault(); e.currentTarget.classList.remove('dragover'); if (e.dataTransfer.files[0]) uploadImage(e.dataTransfer.files[0]); });
         $('fileInput').addEventListener('change', e => { if (e.target.files[0]) uploadImage(e.target.files[0]); });
         
+        // 换图按钮 - 重置状态并触发文件选择
+        $('splitReupload').addEventListener('click', () => {
+            state.splitElements = [];
+            state.splitImageId = null;
+            state.splitImageSize = null;
+            $('splitImage').classList.add('hidden');
+            show($('uploadZone'));
+            hide($('splitBar'));
+            $('toolbar').style.display = 'none';
+            const overlay = $('overlayCanvas');
+            if (overlay) { overlay.width = 0; overlay.height = 0; }
+            renderSplitElements();
+            $('fileInput').click();
+        });
+        
         async function uploadImage(file) {
             setStatus('上传中...', true);
             const fd = new FormData(); fd.append('file', file);

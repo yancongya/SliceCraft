@@ -573,6 +573,8 @@
             font-size: 11px; color: var(--text-2); align-items: center;
         }
         .psd-label { font-size: 11px; color: var(--text-3); font-weight: 500; }
+        .btn-sm-ghost { font-size: 11px; color: var(--text-2); }
+        .btn-sm-ghost:hover { color: var(--accent); background: var(--accent-bg); }
         .psd-layout label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
         .psd-layout input[type="radio"] { width: 12px; height: 12px; accent-color: var(--accent); }
         
