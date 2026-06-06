@@ -316,6 +316,51 @@
             pointer-events: none;
         }
         
+        /* ============ 工具栏 ============ */
+        .toolbar {
+            position: absolute;
+            top: 12px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 50;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .tool-btn {
+            height: 32px; padding: 0 10px;
+            border-radius: 6px;
+            font-size: 12px; font-weight: 500;
+            display: flex; align-items: center; gap: 4px;
+            color: var(--text-2);
+        }
+        .tool-btn:hover { background: var(--bg-hover); color: var(--text); }
+        .tool-btn.active { background: var(--accent-bg); color: var(--accent); }
+        
+        .tool-divider {
+            width: 1px; height: 20px;
+            background: var(--border);
+        }
+        
+        .tool-hint {
+            font-size: 11px; color: var(--text-3);
+            padding: 0 8px;
+        }
+        
+        /* Canvas overlay for lasso */
+        .canvas-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            cursor: crosshair;
+            z-index: 40;
+        }
+        
         /* ============ 框选 ============ */
         .marquee {
             position: absolute;
@@ -483,6 +528,15 @@
                 <div class="layout">
                     <div class="content">
                         <div class="preview" id="splitPreview" onselectstart="return false" style="flex: 6;">
+                            <!-- 工具栏 -->
+                            <div class="toolbar" id="toolbar" style="display:none;">
+                                <button class="tool-btn" id="lassoBtn" title="套索工具 (L)">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                                    套索
+                                </button>
+                                <div class="tool-divider"></div>
+                                <span class="tool-hint" id="toolHint">点击空白处取消</span>
+                            </div>
                             <div class="upload" id="uploadZone">
                                 <div class="upload-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -658,6 +712,27 @@
         </div>
     </div>
     
+    <!-- 套索确认面板 -->
+    <div class="modal" id="lassoModal">
+        <div class="modal-body" style="width:400px;">
+            <button class="modal-close" id="lassoModalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <h3 style="margin-bottom:16px;">套索切分</h3>
+            <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center;">
+                <img id="lassoPreview" src="" style="max-width:100%;max-height:200px;object-fit:contain;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                    <input type="checkbox" id="autoDetectRemaining" checked>
+                    对剩余区域自动检测
+                </label>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="btn btn-secondary" id="lassoCancel" style="width:auto;padding:0 16px;height:36px;">重新绘制</button>
+                    <button class="btn btn-primary" id="lassoConfirm" style="width:auto;padding:0 16px;height:36px;">确认切分</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <input type="file" id="fileInput" accept="image/*" style="display:none">
     <input type="file" id="elemInput" accept="image/*" multiple style="display:none">
     
@@ -713,7 +788,195 @@
         function closeModal() { $('modal').classList.remove('active'); }
         $('modalClose').addEventListener('click', closeModal);
         $('modal').addEventListener('click', e => { if (e.target === $('modal')) closeModal(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+        document.addEventListener('keydown', e => { 
+            if (e.key === 'Escape') { closeModal(); exitLassoMode(); } 
+            if (e.key === 'l' || e.key === 'L') { 
+                if (lassoMode) exitLassoMode(); else enterLassoMode(); 
+            }
+        });
+        
+        // ============ 套索工具 ============
+        let lassoMode = false;
+        let lassoPoints = [];
+        let lassoCanvas = null;
+        let lassoCtx = null;
+        
+        function enterLassoMode() {
+            if (!state.splitImageId) { setStatus('请先上传图片', false, true); return; }
+            
+            lassoMode = true;
+            lassoPoints = [];
+            $('lassoBtn').classList.add('active');
+            $('toolHint').textContent = '绘制轮廓，松手闭合';
+            
+            // 创建 Canvas overlay
+            const preview = $('splitPreview');
+            lassoCanvas = document.createElement('canvas');
+            lassoCanvas.className = 'canvas-overlay';
+            lassoCanvas.width = preview.offsetWidth;
+            lassoCanvas.height = preview.offsetHeight;
+            preview.appendChild(lassoCanvas);
+            lassoCtx = lassoCanvas.getContext('2d');
+            
+            // 绑定事件
+            lassoCanvas.addEventListener('mousedown', onLassoStart);
+            lassoCanvas.addEventListener('mousemove', onLassoMove);
+            lassoCanvas.addEventListener('mouseup', onLassoEnd);
+        }
+        
+        function exitLassoMode() {
+            lassoMode = false;
+            lassoPoints = [];
+            $('lassoBtn').classList.remove('active');
+            $('toolHint').textContent = '';
+            
+            if (lassoCanvas) {
+                lassoCanvas.remove();
+                lassoCanvas = null;
+                lassoCtx = null;
+            }
+        }
+        
+        function onLassoStart(e) {
+            lassoPoints = [];
+            const rect = lassoCanvas.getBoundingClientRect();
+            lassoPoints.push({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
+        }
+        
+        function onLassoMove(e) {
+            if (lassoPoints.length === 0) return;
+            
+            const rect = lassoCanvas.getBoundingClientRect();
+            lassoPoints.push({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            
+            // 绘制路径
+            lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
+            lassoCtx.beginPath();
+            lassoCtx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+            for (let i = 1; i < lassoPoints.length; i++) {
+                lassoCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
+            }
+            lassoCtx.strokeStyle = 'var(--accent)';
+            lassoCtx.lineWidth = 2;
+            lassoCtx.setLineDash([5, 5]);
+            lassoCtx.stroke();
+            lassoCtx.setLineDash([]);
+        }
+        
+        function onLassoEnd(e) {
+            if (lassoPoints.length < 10) {
+                exitLassoMode();
+                return;
+            }
+            
+            // 闭合路径
+            lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
+            lassoCtx.beginPath();
+            lassoCtx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+            for (let i = 1; i < lassoPoints.length; i++) {
+                lassoCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
+            }
+            lassoCtx.closePath();
+            lassoCtx.fillStyle = 'rgba(37, 99, 235, 0.2)';
+            lassoCtx.fill();
+            lassoCtx.strokeStyle = 'var(--accent)';
+            lassoCtx.lineWidth = 2;
+            lassoCtx.stroke();
+            
+            // 生成 mask
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = lassoCanvas.width;
+            maskCanvas.height = lassoCanvas.height;
+            const maskCtx = maskCanvas.getContext('2d');
+            maskCtx.fillStyle = 'black';
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.beginPath();
+            maskCtx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+            for (let i = 1; i < lassoPoints.length; i++) {
+                maskCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
+            }
+            maskCtx.closePath();
+            maskCtx.fillStyle = 'white';
+            maskCtx.fill();
+            
+            // 显示预览
+            $('lassoPreview').src = maskCanvas.toDataURL('image/png');
+            $('lassoModal').classList.add('active');
+            
+            // 保存 mask 数据
+            window.lassoMaskData = maskCanvas.toDataURL('image/png');
+        }
+        
+        // 套索按钮
+        $('lassoBtn').addEventListener('click', () => {
+            if (lassoMode) {
+                exitLassoMode();
+            } else {
+                enterLassoMode();
+            }
+        });
+        
+        // 套索确认面板
+        $('lassoModalClose').addEventListener('click', () => {
+            $('lassoModal').classList.remove('active');
+            exitLassoMode();
+        });
+        
+        $('lassoCancel').addEventListener('click', () => {
+            $('lassoModal').classList.remove('active');
+            exitLassoMode();
+        });
+        
+        $('lassoConfirm').addEventListener('click', async () => {
+            $('lassoModal').classList.remove('active');
+            
+            const maskData = window.lassoMaskData;
+            const autoDetect = $('autoDetectRemaining').checked;
+            
+            exitLassoMode();
+            await submitLasso(maskData, autoDetect);
+        });
+        
+        async function submitLasso(maskData, autoDetect) {
+            setStatus('套索切分中...', true);
+            
+            const fd = new FormData();
+            fd.append('image_id', state.splitImageId);
+            fd.append('mask_base64', maskData);
+            fd.append('auto_detect_remaining', autoDetect);
+            fd.append('detect_method', $('detectMethod').value);
+            fd.append('sensitivity', $('sensitivity').value);
+            fd.append('min_area', $('minArea').value);
+            fd.append('merge_distance', $('mergeDist').value);
+            fd.append('crop_padding', $('padding').value);
+            
+            try {
+                const res = await fetch(API + '/api/lasso', { method: 'POST', body: fd });
+                if (!res.ok) throw new Error('套索切分失败');
+                const data = await res.json();
+                
+                // 添加套索元素
+                const lassoEl = data.lasso_element;
+                lassoEl.index = state.splitElements.length + 1;
+                lassoEl.selected = true;
+                state.splitElements.push(lassoEl);
+                
+                // 添加剩余元素
+                if (data.remaining_elements) {
+                    data.remaining_elements.forEach(el => {
+                        el.index = state.splitElements.length + 1;
+                        el.selected = true;
+                        state.splitElements.push(el);
+                    });
+                }
+                
+                renderSplitElements();
+                setStatus(`套索切分完成，共 ${state.splitElements.length} 个元素`);
+            } catch (err) {
+                setStatus(err.message, false, true);
+            }
+        }
         
         // 元素条布局
         function updateElementsLayout() {
@@ -966,6 +1229,7 @@
                 state.splitImageId = data.image_id;
                 $('splitImage').src = data.preview;
                 show($('splitImage')); hide($('uploadZone'));
+                $('toolbar').style.display = 'flex';
                 setStatus(data.filename + ' (' + data.width + '×' + data.height + ')');
                 runDetection();
             } catch (err) { setStatus(err.message, false, true); }

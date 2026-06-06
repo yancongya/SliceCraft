@@ -260,6 +260,123 @@ async def export_results(
     )
 
 
+@app.post("/api/lasso")
+async def lasso_detect(
+    image_id: str = Form(...),
+    mask_base64: str = Form(...),
+    auto_detect_remaining: bool = Form(True),
+    detect_method: str = Form("smart"),
+    sensitivity: int = Form(50),
+    min_area: int = Form(500),
+    merge_distance: int = Form(20),
+    crop_padding: int = Form(0),
+):
+    """套索工具：异形裁切 + 剩余区域检测"""
+    if image_id not in uploaded_images:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    img = uploaded_images[image_id]["original"]
+    img_h, img_w = img.shape[:2]
+    
+    # 解码 mask（PNG base64）
+    mask_data = base64.b64decode(mask_base64.split(',')[1] if ',' in mask_base64 else mask_base64)
+    mask_img = np.frombuffer(mask_data, np.uint8)
+    mask_img = cv2.imdecode(mask_img, cv2.IMREAD_GRAYSCALE)
+    
+    # 调整 mask 大小匹配原图
+    if mask_img.shape[:2] != (img_h, img_w):
+        mask_img = cv2.resize(mask_img, (img_w, img_h), interpolation=cv2.INTER_NEAREST)
+    
+    # 二值化 mask
+    _, mask_binary = cv2.threshold(mask_img, 127, 255, cv2.THRESH_BINARY)
+    
+    # 1. 异形裁切
+    # 添加 alpha 通道
+    if len(img.shape) == 2:
+        img_bgra = cv2.cvtColor(img, cv2.COLOR_GRAY2BGRA)
+    elif img.shape[2] == 3:
+        img_bgra = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+    else:
+        img_bgra = img.copy()
+    
+    # 应用 mask 作为 alpha
+    img_bgra[:, :, 3] = mask_binary
+    
+    # 获取裁切区域 bbox
+    contours, _ = cv2.findContours(mask_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise HTTPException(status_code=400, detail="Invalid mask")
+    
+    x, y, w, h = cv2.boundingRect(contours[0])
+    
+    # 应用 padding
+    x1 = max(0, x - crop_padding)
+    y1 = max(0, y - crop_padding)
+    x2 = min(img_w, x + w + crop_padding)
+    y2 = min(img_h, y + h + crop_padding)
+    
+    # 裁切
+    cropped = img_bgra[y1:y2, x1:x2]
+    
+    # 编码为 base64
+    _, crop_buffer = cv2.imencode('.png', cropped)
+    crop_b64 = base64.b64encode(crop_buffer).decode('utf-8')
+    
+    lasso_element = {
+        "index": 0,  # 稍后分配
+        "bbox": [x1, y1, x2 - x1, y2 - y1],
+        "preview": f"data:image/png;base64,{crop_b64}",
+        "type": "lasso"
+    }
+    
+    result = {
+        "lasso_element": lasso_element,
+        "remaining_elements": []
+    }
+    
+    # 2. 剩余区域检测
+    if auto_detect_remaining:
+        # 创建剩余区域 mask（反转）
+        remaining_mask = cv2.bitwise_not(mask_binary)
+        
+        # 应用 mask 到原图
+        remaining_img = cv2.bitwise_and(img, img, mask=remaining_mask)
+        
+        # 检测剩余区域
+        if detect_method == "smart":
+            contours, bboxes = smart.detect(remaining_img, "auto", sensitivity, min_area, merge_distance)
+        elif detect_method == "canny":
+            contours, bboxes = canny.detect(remaining_img, 1.0, 5, 50, 150, 3, 3, 1, 1, min_area, merge_distance)
+        elif detect_method == "flood":
+            contours, bboxes = flood.detect(remaining_img, 30, min_area, 5)
+        else:
+            contours, bboxes = smart.detect(remaining_img, "auto", sensitivity, min_area, merge_distance)
+        
+        # 生成元素预览
+        remaining_elements = []
+        for i, (bx, by, bw, bh) in enumerate(bboxes):
+            # 应用 padding
+            bx1 = max(0, bx - crop_padding)
+            by1 = max(0, by - crop_padding)
+            bx2 = min(img_w, bx + bw + crop_padding)
+            by2 = min(img_h, by + bh + crop_padding)
+            
+            cropped = img[by1:by2, bx1:bx2]
+            _, crop_buffer = cv2.imencode('.png', cropped)
+            crop_b64 = base64.b64encode(crop_buffer).decode('utf-8')
+            
+            remaining_elements.append({
+                "index": i + 1,
+                "bbox": [bx1, by1, bx2 - bx1, by2 - by1],
+                "preview": f"data:image/png;base64,{crop_b64}",
+                "type": "auto"
+            })
+        
+        result["remaining_elements"] = remaining_elements
+    
+    return JSONResponse(result)
+
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
