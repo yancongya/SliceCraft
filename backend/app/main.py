@@ -13,7 +13,7 @@ from typing import List, Dict, Any
 import base64
 
 from .detectors import canny, flood, alpha, smart
-from .removers import rembg_remover, flood_remover, combined_remover
+from .removers import flood_remover
 
 app = FastAPI(title="Image Splitter API")
 
@@ -182,6 +182,7 @@ async def remove_background(
         cropped = img[y:y+h, x:x+w]
         
         if method == "rembg":
+            from .removers import rembg_remover
             result = rembg_remover.remove_background(cropped, model)
         elif method == "flood":
             result = flood_remover.remove_background(cropped, flood_tolerance)
@@ -194,6 +195,7 @@ async def remove_background(
             else:
                 result = flood_remover.remove_background(cropped, flood_tolerance)
         elif method == "combined":
+            from .removers import combined_remover
             result = combined_remover.remove_background(cropped, model, flood_tolerance)
         else:
             raise HTTPException(status_code=400, detail="Invalid method")

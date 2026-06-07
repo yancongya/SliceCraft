@@ -6,10 +6,8 @@ services:
       - "8001:8001"
     volumes:
       - /vol1/1000/services/data/image-splitter:/app/data
-      - model-cache:/root/.cache
+      - /vol1/1000/services/data/image-splitter-cache/u2net:/root/.u2net
+      - /vol1/1000/services/data/image-splitter-cache/huggingface:/root/.cache/huggingface
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-
-volumes:
-  model-cache:
