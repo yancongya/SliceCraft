@@ -607,6 +607,37 @@ async def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/cache")
+async def get_cache_info():
+    """获取缓存信息"""
+    total_size = 0
+    image_count = len(uploaded_images)
+    
+    for img_data in uploaded_images.values():
+        if 'original' in img_data:
+            # 估算图片大小
+            img = img_data['original']
+            total_size += img.nbytes
+    
+    return JSONResponse({
+        "image_count": image_count,
+        "total_bytes": total_size,
+        "total_mb": round(total_size / (1024 * 1024), 2)
+    })
+
+
+@app.post("/api/cache/clear")
+async def clear_cache():
+    """清理缓存"""
+    global uploaded_images
+    count = len(uploaded_images)
+    uploaded_images.clear()
+    return JSONResponse({
+        "cleared": count,
+        "message": f"已清理 {count} 个图片缓存"
+    })
+
+
 # 静态文件服务（前端）
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend")
 if os.path.exists(frontend_dir):

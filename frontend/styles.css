@@ -49,6 +49,30 @@
         .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
         .logo svg { width: 20px; height: 20px; color: var(--accent); }
         
+        /* 缓存信息 */
+        .cache-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: var(--bg);
+            cursor: pointer;
+            font-size: 11px;
+            color: var(--text-2);
+            transition: all 0.15s;
+        }
+        .cache-info:hover {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+        .cache-info svg {
+            color: var(--text-3);
+        }
+        .cache-info .cache-count {
+            color: var(--text-3);
+        }
+        
         .tabs { display: flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: 8px; }
         
         .tab {

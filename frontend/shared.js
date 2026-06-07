@@ -686,6 +686,64 @@
         }
         window.updateElementDetail = updateElementDetail;
         
+        // ============ 缓存管理 ============
+        async function updateCacheInfo() {
+            try {
+                const res = await fetch(API + '/api/cache');
+                if (res.ok) {
+                    const data = await res.json();
+                    const sizeEl = $('cacheSize');
+                    const countEl = $('cacheCount');
+                    if (sizeEl) sizeEl.textContent = data.total_mb + ' MB';
+                    if (countEl) countEl.textContent = data.image_count + ' 张';
+                }
+            } catch (err) {
+                console.error('获取缓存信息失败:', err);
+            }
+        }
+        
+        // 点击清理缓存
+        $('cacheInfo')?.addEventListener('click', async () => {
+            if (!confirm('确定要清理所有图片缓存吗？')) return;
+            
+            try {
+                const res = await fetch(API + '/api/cache/clear', { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(data.message, 'success');
+                    updateCacheInfo();
+                    
+                    // 清理本地状态
+                    state.splitElements = [];
+                    state.removeElements = [];
+                    state.upscaleItems = [];
+                    state.recognizeItems = [];
+                    state.splitImageId = null;
+                    
+                    // 刷新所有面板
+                    if (typeof renderSplitElements === 'function') renderSplitElements();
+                    if (typeof renderRemoveElements === 'function') renderRemoveElements();
+                    if (typeof renderUpscaleElements === 'function') renderUpscaleElements();
+                    if (typeof renderRecognizeElements === 'function') renderRecognizeElements();
+                    
+                    // 隐藏画布
+                    const splitImg = $('splitImage');
+                    if (splitImg) splitImg.classList.add('hidden');
+                    const uploadZone = $('uploadZone');
+                    if (uploadZone) uploadZone.style.display = 'flex';
+                    
+                    updateBadges();
+                }
+            } catch (err) {
+                showToast('清理失败: ' + err.message, 'error');
+            }
+        });
+        
+        // 定期更新缓存信息
+        setInterval(updateCacheInfo, 5000);
+        // 初始加载
+        updateCacheInfo();
+        
         // ============ Toast ============
         function showToast(msg, type = '') {
             const c = $('toastContainer');
