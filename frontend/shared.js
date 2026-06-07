@@ -634,6 +634,63 @@
         initMarquee('removeList', 'removeElements');
         initMarquee('upscaleList', 'upscaleItems');
         
+        // ============ 元素信息栏 ============
+        // 更新信息栏显示（单选时显示尺寸和名称，多选或无选中时隐藏）
+        function updateElementInfoBar(tab, elements) {
+            const infoBar = $(tab + 'InfoBar');
+            if (!infoBar) return;
+            
+            const selected = elements.filter(e => e.selected);
+            
+            if (selected.length === 1) {
+                const el = selected[0];
+                infoBar.classList.remove('hidden');
+                
+                // 获取尺寸
+                const sizeEl = $(tab + 'InfoSize');
+                const nameEl = $(tab + 'InfoName');
+                
+                if (sizeEl) {
+                    // 尝试从不同来源获取尺寸
+                    let w = 0, h = 0;
+                    if (el.bbox) {
+                        w = el.bbox[2];
+                        h = el.bbox[3];
+                    } else if (el.resultWidth && el.resultHeight) {
+                        w = el.resultWidth;
+                        h = el.resultHeight;
+                    }
+                    
+                    if (w && h) {
+                        sizeEl.textContent = w + ' × ' + h;
+                    } else {
+                        // 尝试从图片获取尺寸
+                        const imgSrc = el.processed ? el.result : el.src || el.preview;
+                        if (imgSrc) {
+                            const img = new Image();
+                            img.onload = () => {
+                                sizeEl.textContent = img.width + ' × ' + img.height;
+                            };
+                            img.src = imgSrc;
+                        } else {
+                            sizeEl.textContent = '-';
+                        }
+                    }
+                }
+                
+                if (nameEl) {
+                    nameEl.value = el.name || ('element_' + el.index);
+                    // 名称修改时同步到元素
+                    nameEl.onchange = () => {
+                        el.name = nameEl.value;
+                    };
+                }
+            } else {
+                infoBar.classList.add('hidden');
+            }
+        }
+        window.updateElementInfoBar = updateElementInfoBar;
+        
         // ============ Toast ============
         function showToast(msg, type = '') {
             const c = $('toastContainer');

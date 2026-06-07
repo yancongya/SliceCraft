@@ -446,6 +446,7 @@
                     div.classList.toggle('selected', el.selected);
                     showOnCanvas(imgSrc, el);
                     updateBadges();
+                    updateElementInfoBar('remove', state.removeElements);
                 });
                 div.addEventListener('dblclick', e => {
                     if (e.target.classList.contains('card-delete')) return;
@@ -462,6 +463,7 @@
             renderRemoveResults();
             updateBadges();
             updateElementsLayout();
+            updateElementInfoBar('remove', state.removeElements);
             
             // 默认显示第一个元素到画布
             if (has && !canvasState.currentImage) {

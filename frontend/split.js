@@ -178,6 +178,7 @@
                     else { el.selected = !el.selected; }
                     div.classList.toggle('selected', el.selected);
                     updateBadges();
+                    updateElementInfoBar('split', state.splitElements);
                 });
                 div.addEventListener('dblclick', e => {
                     if (e.target.classList.contains('card-delete')) return;
@@ -194,6 +195,7 @@
             updateBadges();
             updateElementsLayout();
             drawOverlay();
+            updateElementInfoBar('split', state.splitElements);
         }
         
         $('selectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = true); renderSplitElements(); });

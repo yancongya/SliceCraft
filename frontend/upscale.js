@@ -179,6 +179,7 @@ function renderUpscaleElements() {
             div.classList.toggle('selected', el.selected);
             showUpscaleCanvas(imgSrc, el);
             updateBadges();
+            updateElementInfoBar('upscale', state.upscaleItems);
         });
         div.addEventListener('dblclick', e => {
             if (e.target.classList.contains('card-delete')) return;
@@ -194,6 +195,7 @@ function renderUpscaleElements() {
 
     updateBadges();
     updateElementsLayout();
+    updateElementInfoBar('upscale', state.upscaleItems);
 }
 
 // ============ 获取内容 ============
