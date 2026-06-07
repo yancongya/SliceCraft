@@ -630,3 +630,56 @@
         .toast.error { border-left: 3px solid #ef4444; }
         .toast.success { border-left: 3px solid #22c55e; }
         @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* ============ AI 放大面板 ============ */
+        .upscale-info-bar {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-2);
+        }
+        
+        .progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+        }
+        
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -30%;
+            width: 30%;
+            height: 100%;
+            background: var(--accent);
+            animation: progress-slide 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes progress-slide {
+            0% { left: -30%; }
+            100% { left: 100%; }
+        }
+        
+        .progress span {
+            font-size: 11px;
+            color: var(--text-3);
+            white-space: nowrap;
+        }
+        
+        /* 上传区域拖拽状态 */
+        .upload.dragover {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }

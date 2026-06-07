@@ -14,6 +14,7 @@ import base64
 
 from .detectors import canny, flood, alpha, smart
 from .removers import flood_remover
+from .upscalers.real_esrgan import upscale_image, get_model_info, MODELS
 
 app = FastAPI(title="Image Splitter API")
 
@@ -506,6 +507,96 @@ async def export_psd_from_elements(
         media_type="application/octet-stream",
         headers={"Content-Disposition": 'attachment; filename=elements.psd'}
     )
+
+
+@app.post("/api/upscale")
+async def upscale(
+    image_id: str = Form(...),
+    model: str = Form("RealESRGAN_x4plus"),
+    scale: float = Form(None),
+    tile_size: int = Form(0),
+):
+    """放大图片"""
+    if image_id not in uploaded_images:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    if model not in MODELS:
+        raise HTTPException(status_code=400, detail=f"未知模型: {model}")
+    
+    img = uploaded_images[image_id]["original"]
+    
+    try:
+        result = upscale_image(img, model_name=model, outscale=scale, tile_size=tile_size)
+        
+        # 编码结果
+        _, buffer = cv2.imencode('.png', result)
+        result_b64 = base64.b64encode(buffer).decode('utf-8')
+        
+        # 计算放大后尺寸
+        h, w = result.shape[:2]
+        has_alpha = len(result.shape) == 3 and result.shape[2] == 4
+        
+        return JSONResponse({
+            "preview": f"data:image/png;base64,{result_b64}",
+            "width": w,
+            "height": h,
+            "channels": 4 if has_alpha else 3,
+            "model": model,
+            "scale": scale or MODELS[model]["scale"],
+        })
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"放大失败: {str(e)}")
+
+
+@app.get("/api/upscale/models")
+async def get_upscale_models():
+    """获取可用的放大模型列表"""
+    return JSONResponse(get_model_info())
+
+
+@app.post("/api/upscale/export")
+async def export_upscaled(
+    base64_data: str = Form(...),
+    filename: str = Form("upscaled.png"),
+    format: str = Form("png"),
+):
+    """导出放大后的图片"""
+    # 解码 base64
+    if ',' in base64_data:
+        base64_data = base64_data.split(',')[1]
+    
+    img_bytes = base64.b64decode(base64_data)
+    
+    if format == "png":
+        return StreamingResponse(
+            io.BytesIO(img_bytes),
+            media_type="image/png",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    else:
+        # 转换为其他格式
+        pil_img = Image.open(io.BytesIO(img_bytes))
+        output = io.BytesIO()
+        if format == "jpg" or format == "jpeg":
+            # RGBA 转 RGB
+            if pil_img.mode == 'RGBA':
+                bg = Image.new('RGB', pil_img.size, (255, 255, 255))
+                bg.paste(pil_img, mask=pil_img.split()[3])
+                pil_img = bg
+            pil_img.save(output, format='JPEG', quality=95)
+        elif format == "webp":
+            pil_img.save(output, format='WEBP', quality=90)
+        else:
+            pil_img.save(output, format='PNG')
+        output.seek(0)
+        
+        return StreamingResponse(
+            output,
+            media_type=f"image/{format}",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
 
 @app.get("/api/health")
