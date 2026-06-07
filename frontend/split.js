@@ -321,21 +321,49 @@
         }
         window.doExport = doExport;
         
-        $('sendBtn').addEventListener('click', () => {
+        // 初始化发送下拉菜单
+        initSendDropdown('splitSendBtn', 'splitSendMenu', (target) => {
             const sel = state.splitElements.filter(e => e.selected);
-            if (!sel.length) { setStatus('请先选择元素', false, true); return; }
+            if (!sel.length) { showToast('请先选择元素', 'error'); return; }
             
-            state.removeElements = sel.map(el => ({
-                index: el.index,
-                preview: el.preview,
-                selected: true,
-                processed: false,
-                result: null,
-                name: el.name || ('element_' + el.index)
-            }));
+            if (target === 'remove') {
+                state.removeElements = sel.map(el => ({
+                    index: el.index,
+                    preview: el.preview,
+                    selected: true,
+                    processed: false,
+                    result: null,
+                    name: el.name || ('element_' + el.index)
+                }));
+                renderRemoveElements();
+                document.querySelector('.tab[data-panel="remove"]').click();
+            } else if (target === 'upscale') {
+                sel.forEach(el => {
+                    state.upscaleItems.push({
+                        index: state.upscaleItems.length + 1,
+                        src: el.preview,
+                        name: el.name || ('element_' + el.index),
+                        selected: true,
+                        processed: false,
+                        result: null
+                    });
+                });
+                renderUpscaleElements();
+                document.querySelector('.tab[data-panel="upscale"]').click();
+            } else if (target === 'recognize') {
+                state.recognizeItems = sel.map(el => ({
+                    index: el.index,
+                    src: el.preview,
+                    name: el.name || ('element_' + el.index),
+                    selected: true,
+                    label: null,
+                    confidence: null,
+                    suggestedName: null
+                }));
+                renderRecognizeElements();
+                document.querySelector('.tab[data-panel="recognize"]').click();
+            }
             
-            renderRemoveElements();
-            document.querySelector('.tab[data-panel="remove"]').click();
-            setStatus('已发送 ' + sel.length + ' 个元素');
+            showToast(`已发送 ${sel.length} 个元素`);
         });
         

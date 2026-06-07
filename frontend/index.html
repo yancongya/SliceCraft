@@ -82,15 +82,25 @@
                                     <span class="elements-count" id="splitCount">0 个</span>
                                     <button class="btn-sm btn-sm-ghost" id="selectSplitAll">全选</button>
                                     <button class="btn-sm btn-sm-ghost" id="deselectSplitAll">取消</button>
-                                    <div class="send-group">
-                                        <button class="btn-sm btn-sm-primary" id="sendBtn">
-                                            发送到抠图
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                                    <div class="send-dropdown">
+                                        <button class="btn-sm btn-sm-primary" id="splitSendBtn">
+                                            发送到
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
                                         </button>
-                                        <button class="btn-sm btn-sm-primary" id="sendToUpscaleFromSplit">
-                                            发送到放大
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
-                                        </button>
+                                        <div class="send-dropdown-menu" id="splitSendMenu">
+                                            <button data-target="remove">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                                抠图面板
+                                            </button>
+                                            <button data-target="upscale">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                                                放大面板
+                                            </button>
+                                            <button data-target="recognize">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                                识别面板
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="psd-layout" id="splitPsdLayout">
                                         <span class="psd-label">PSD:</span>
@@ -237,10 +247,26 @@
                                     <span class="elements-count" id="removeCount">0 个</span>
                                     <button class="btn-sm btn-sm-ghost" id="selectRemAll">全选</button>
                                     <button class="btn-sm btn-sm-ghost" id="deselectRemAll">取消</button>
-                                    <button class="btn-sm btn-sm-primary" id="sendToUpscaleFromRemove">
-                                        发送到放大
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
-                                    </button>
+                                    <div class="send-dropdown">
+                                        <button class="btn-sm btn-sm-primary" id="removeSendBtn">
+                                            发送到
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                                        </button>
+                                        <div class="send-dropdown-menu" id="removeSendMenu">
+                                            <button data-target="split">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                                                切分面板
+                                            </button>
+                                            <button data-target="upscale">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                                                放大面板
+                                            </button>
+                                            <button data-target="recognize">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                                识别面板
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div class="psd-layout" id="removePsdLayout">
                                         <span class="psd-label">PSD:</span>
                                         <label><input type="radio" name="removePsdPos" value="bbox" checked> 按位置</label>
@@ -387,6 +413,29 @@
                             </button>
                             <div class="field-hint" style="margin-top:8px;">获取选中的元素或处理结果</div>
                         </div>
+                        <div class="section">
+                            <div class="section-title">发送到</div>
+                            <div class="send-dropdown" style="width:100%;">
+                                <button class="btn-outline" id="upscaleSendBtn" style="width:100%;justify-content:center;">
+                                    选择目标面板
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                                <div class="send-dropdown-menu" id="upscaleSendMenu" style="width:100%;">
+                                    <button data-target="split">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                                        切分面板
+                                    </button>
+                                    <button data-target="remove">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                        抠图面板
+                                    </button>
+                                    <button data-target="recognize">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                        识别面板
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="actions">
                             <div class="progress hidden" id="upscaleProgress">
                                 <div class="progress-bar"></div>
@@ -452,6 +501,29 @@
                             <button class="btn-outline" id="getFromSplitForRecognize">从切分面板获取</button>
                             <button class="btn-outline" id="getFromRemoveForRecognize" style="margin-top:8px;">从抠图面板获取</button>
                             <button class="btn-outline" id="getFromUpscaleForRecognize" style="margin-top:8px;">从放大面板获取</button>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">发送到</div>
+                            <div class="send-dropdown" style="width:100%;">
+                                <button class="btn-outline" id="recognizeSendBtn" style="width:100%;justify-content:center;">
+                                    选择目标面板
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                                <div class="send-dropdown-menu" id="recognizeSendMenu" style="width:100%;">
+                                    <button data-target="split">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                                        切分面板
+                                    </button>
+                                    <button data-target="remove">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                        抠图面板
+                                    </button>
+                                    <button data-target="upscale">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                                        放大面板
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="actions">
                             <div class="progress hidden" id="recognizeProgress">

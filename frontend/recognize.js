@@ -267,3 +267,51 @@ $('deselectRecognizeAll')?.addEventListener('click', () => {
     (state.recognizeItems || []).forEach(e => e.selected = false);
     renderRecognizeElements();
 });
+
+// 初始化发送下拉菜单
+initSendDropdown('recognizeSendBtn', 'recognizeSendMenu', (target) => {
+    const sel = (state.recognizeItems || []).filter(e => e.selected);
+    if (!sel.length) { showToast('请先选择元素', 'error'); return; }
+    
+    if (target === 'split') {
+        sel.forEach(el => {
+            state.splitElements.push({
+                index: state.splitElements.length + 1,
+                preview: el.src,
+                selected: true,
+                name: el.name || ('element_' + el.index),
+                bbox: [0, 0, 0, 0]
+            });
+        });
+        renderSplitElements();
+        document.querySelector('.tab[data-panel="split"]').click();
+    } else if (target === 'remove') {
+        sel.forEach(el => {
+            state.removeElements.push({
+                index: state.removeElements.length + 1,
+                preview: el.src,
+                selected: true,
+                processed: false,
+                result: null,
+                name: el.name || ('element_' + el.index)
+            });
+        });
+        renderRemoveElements();
+        document.querySelector('.tab[data-panel="remove"]').click();
+    } else if (target === 'upscale') {
+        sel.forEach(el => {
+            state.upscaleItems.push({
+                index: state.upscaleItems.length + 1,
+                src: el.src,
+                name: el.name || ('element_' + el.index),
+                selected: true,
+                processed: false,
+                result: null
+            });
+        });
+        renderUpscaleElements();
+        document.querySelector('.tab[data-panel="upscale"]').click();
+    }
+    
+    showToast(`已发送 ${sel.length} 个元素`);
+});

@@ -607,6 +607,55 @@
             if (window.doExport) await window.doExport('remove', format);
         });
         
+        // 初始化发送下拉菜单
+        initSendDropdown('removeSendBtn', 'removeSendMenu', (target) => {
+            const sel = state.removeElements.filter(e => e.selected);
+            if (!sel.length) { showToast('请先选择元素', 'error'); return; }
+            
+            if (target === 'split') {
+                sel.forEach(el => {
+                    state.splitElements.push({
+                        index: state.splitElements.length + 1,
+                        preview: el.processed ? el.result : el.preview,
+                        selected: true,
+                        name: el.name || ('element_' + el.index),
+                        bbox: [0, 0, 0, 0]
+                    });
+                });
+                renderSplitElements();
+                document.querySelector('.tab[data-panel="split"]').click();
+            } else if (target === 'upscale') {
+                sel.forEach(el => {
+                    state.upscaleItems.push({
+                        index: state.upscaleItems.length + 1,
+                        src: el.processed ? el.result : el.preview,
+                        name: el.name || ('element_' + el.index),
+                        selected: true,
+                        processed: false,
+                        result: null
+                    });
+                });
+                renderUpscaleElements();
+                document.querySelector('.tab[data-panel="upscale"]').click();
+            } else if (target === 'recognize') {
+                sel.forEach(el => {
+                    state.recognizeItems.push({
+                        index: state.recognizeItems.length + 1,
+                        src: el.processed ? el.result : el.preview,
+                        name: el.name || ('element_' + el.index),
+                        selected: true,
+                        label: null,
+                        confidence: null,
+                        suggestedName: null
+                    });
+                });
+                renderRecognizeElements();
+                document.querySelector('.tab[data-panel="recognize"]').click();
+            }
+            
+            showToast(`已发送 ${sel.length} 个元素`);
+        });
+        
         // 元素条框选功能
         
         // 元素条框选功能

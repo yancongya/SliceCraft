@@ -632,6 +632,32 @@
             canvas.style.cursor = hovering ? 'pointer' : 'default';
         });
         
+        // ============ 发送下拉菜单 ============
+        function initSendDropdown(btnId, menuId, sendFn) {
+            const btn = $(btnId);
+            const menu = $(menuId);
+            if (!btn || !menu) return;
+            
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('show');
+            });
+            
+            menu.querySelectorAll('button[data-target]').forEach(targetBtn => {
+                targetBtn.addEventListener('click', () => {
+                    const target = targetBtn.dataset.target;
+                    sendFn(target);
+                    menu.classList.remove('show');
+                });
+            });
+            
+            // 点击外部关闭菜单
+            document.addEventListener('click', () => {
+                menu.classList.remove('show');
+            });
+        }
+        window.initSendDropdown = initSendDropdown;
+        
         // ============ 初始化框选 ============
         initMarquee('splitList', 'splitElements');
         initMarquee('removeList', 'removeElements');
