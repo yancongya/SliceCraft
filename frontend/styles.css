@@ -690,36 +690,24 @@
             gap: 4px;
         }
         
-        /* 元素信息栏 */
-        .element-info-bar {
-            padding: 6px 16px;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-        
-        .info-row {
+        /* 元素详情（在 header 中显示） */
+        .element-detail {
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 12px;
+            margin-left: auto;
         }
         
-        .info-label {
+        .element-detail .info-size {
             color: var(--text-3);
-            font-weight: 500;
-        }
-        
-        .info-value {
-            color: var(--text-2);
             font-family: 'SF Mono', Monaco, monospace;
         }
         
-        .info-input {
-            flex: 1;
-            max-width: 200px;
-            height: 24px;
-            padding: 0 8px;
+        .element-detail .info-name {
+            width: 120px;
+            height: 22px;
+            padding: 0 6px;
             border: 1px solid var(--border);
             border-radius: 4px;
             font-size: 12px;
@@ -729,6 +717,6 @@
             transition: border-color 0.15s;
         }
         
-        .info-input:focus {
+        .element-detail .info-name:focus {
             border-color: var(--accent);
         }

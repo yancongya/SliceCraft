@@ -64,6 +64,10 @@
                             <div class="bar-resize"></div>
                             <div class="elements-header">
                                 <span class="elements-title">检测到的元素</span>
+                                <div class="element-detail hidden" id="splitDetail">
+                                    <span class="info-size" id="splitInfoSize"></span>
+                                    <input type="text" class="info-name" id="splitInfoName" placeholder="名称">
+                                </div>
                                 <div class="elements-actions">
                                     <button class="btn-sm btn-sm-ghost" id="splitReupload" title="重新选择图片">换图</button>
                                     <span class="elements-count" id="splitCount">0 个</span>
@@ -92,14 +96,6 @@
                                             <button data-format="psd">PSD 文件</button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="element-info-bar hidden" id="splitInfoBar">
-                                <div class="info-row">
-                                    <span class="info-label">尺寸:</span>
-                                    <span class="info-value" id="splitInfoSize">-</span>
-                                    <span class="info-label" style="margin-left:16px;">名称:</span>
-                                    <input type="text" class="info-input" id="splitInfoName" placeholder="元素名称">
                                 </div>
                             </div>
                             <div class="elements-container single-row" id="splitList"></div>
@@ -223,6 +219,10 @@
                             <div class="bar-resize"></div>
                             <div class="elements-header">
                                 <span class="elements-title">待处理元素</span>
+                                <div class="element-detail hidden" id="removeDetail">
+                                    <span class="info-size" id="removeInfoSize"></span>
+                                    <input type="text" class="info-name" id="removeInfoName" placeholder="名称">
+                                </div>
                                 <div class="elements-actions">
                                     <button class="btn-sm btn-sm-ghost" id="removeReupload" title="添加新图片">+ 添加</button>
                                     <span class="elements-count" id="removeCount">0 个</span>
@@ -245,14 +245,6 @@
                                             <button data-format="psd">PSD 文件</button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="element-info-bar hidden" id="removeInfoBar">
-                                <div class="info-row">
-                                    <span class="info-label">尺寸:</span>
-                                    <span class="info-value" id="removeInfoSize">-</span>
-                                    <span class="info-label" style="margin-left:16px;">名称:</span>
-                                    <input type="text" class="info-input" id="removeInfoName" placeholder="元素名称">
                                 </div>
                             </div>
                             <div class="elements-container single-row" id="removeList"></div>
@@ -337,18 +329,14 @@
                             <div class="bar-resize"></div>
                             <div class="elements-header">
                                 <span class="elements-title">待放大元素</span>
+                                <div class="element-detail hidden" id="upscaleDetail">
+                                    <span class="info-size" id="upscaleInfoSize"></span>
+                                    <input type="text" class="info-name" id="upscaleInfoName" placeholder="名称">
+                                </div>
                                 <div class="elements-actions">
                                     <span class="elements-count" id="upscaleCount">0 个</span>
                                     <button class="btn-sm btn-sm-ghost" id="selectUpscaleAll">全选</button>
                                     <button class="btn-sm btn-sm-ghost" id="deselectUpscaleAll">取消</button>
-                                </div>
-                            </div>
-                            <div class="element-info-bar hidden" id="upscaleInfoBar">
-                                <div class="info-row">
-                                    <span class="info-label">尺寸:</span>
-                                    <span class="info-value" id="upscaleInfoSize">-</span>
-                                    <span class="info-label" style="margin-left:16px;">名称:</span>
-                                    <input type="text" class="info-input" id="upscaleInfoName" placeholder="元素名称">
                                 </div>
                             </div>
                             <div class="elements-container single-row" id="upscaleList"></div>

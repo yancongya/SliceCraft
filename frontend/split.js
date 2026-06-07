@@ -174,11 +174,15 @@
                 div.innerHTML = '<img src="' + el.preview + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
                 div.addEventListener('click', e => {
                     if (e.target.classList.contains('card-delete')) return;
-                    if (e.shiftKey) { el.selected = true; }
-                    else { el.selected = !el.selected; }
-                    div.classList.toggle('selected', el.selected);
-                    updateBadges();
-                    updateElementInfoBar('split', state.splitElements);
+                    if (e.shiftKey) {
+                        // Shift+点击：追加选中
+                        el.selected = true;
+                    } else {
+                        // 普通单击：只选当前，取消其他
+                        state.splitElements.forEach(x => x.selected = false);
+                        el.selected = true;
+                    }
+                    renderSplitElements();
                 });
                 div.addEventListener('dblclick', e => {
                     if (e.target.classList.contains('card-delete')) return;
@@ -195,7 +199,7 @@
             updateBadges();
             updateElementsLayout();
             drawOverlay();
-            updateElementInfoBar('split', state.splitElements);
+            updateElementDetail('split', state.splitElements);
         }
         
         $('selectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = true); renderSplitElements(); });

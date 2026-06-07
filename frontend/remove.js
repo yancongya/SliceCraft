@@ -442,11 +442,14 @@
                 div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
                 div.addEventListener('click', e => {
                     if (e.target.classList.contains('card-delete')) return;
-                    if (e.shiftKey) { el.selected = true; } else { el.selected = !el.selected; }
-                    div.classList.toggle('selected', el.selected);
+                    if (e.shiftKey) {
+                        el.selected = true;
+                    } else {
+                        state.removeElements.forEach(x => x.selected = false);
+                        el.selected = true;
+                    }
                     showOnCanvas(imgSrc, el);
-                    updateBadges();
-                    updateElementInfoBar('remove', state.removeElements);
+                    renderRemoveElements();
                 });
                 div.addEventListener('dblclick', e => {
                     if (e.target.classList.contains('card-delete')) return;
@@ -463,7 +466,7 @@
             renderRemoveResults();
             updateBadges();
             updateElementsLayout();
-            updateElementInfoBar('remove', state.removeElements);
+            updateElementDetail('remove', state.removeElements);
             
             // 默认显示第一个元素到画布
             if (has && !canvasState.currentImage) {

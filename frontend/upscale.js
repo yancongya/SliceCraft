@@ -175,11 +175,14 @@ function renderUpscaleElements() {
         div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
         div.addEventListener('click', e => {
             if (e.target.classList.contains('card-delete')) return;
-            if (e.shiftKey) { el.selected = true; } else { el.selected = !el.selected; }
-            div.classList.toggle('selected', el.selected);
+            if (e.shiftKey) {
+                el.selected = true;
+            } else {
+                state.upscaleItems.forEach(x => x.selected = false);
+                el.selected = true;
+            }
             showUpscaleCanvas(imgSrc, el);
-            updateBadges();
-            updateElementInfoBar('upscale', state.upscaleItems);
+            renderUpscaleElements();
         });
         div.addEventListener('dblclick', e => {
             if (e.target.classList.contains('card-delete')) return;
@@ -195,7 +198,7 @@ function renderUpscaleElements() {
 
     updateBadges();
     updateElementsLayout();
-    updateElementInfoBar('upscale', state.upscaleItems);
+    updateElementDetail('upscale', state.upscaleItems);
 }
 
 // ============ 获取内容 ============
