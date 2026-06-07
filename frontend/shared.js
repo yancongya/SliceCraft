@@ -18,7 +18,8 @@
             splitImageId: null,
             splitElements: [],
             removeElements: [],
-            upscaleItems: []
+            upscaleItems: [],
+            recognizeItems: []
         };
         
         // ============ 工具函数 ============
@@ -31,10 +32,12 @@
             const s = state.splitElements.filter(e => e.selected).length;
             const r = state.removeElements.filter(e => e.selected).length;
             const u = (state.upscaleItems || []).filter(e => e.selected).length;
-            const sb = $('splitBadge'), rb = $('removeBadge'), ub = $('upscaleBadge');
+            const g = (state.recognizeItems || []).filter(e => e.selected).length;
+            const sb = $('splitBadge'), rb = $('removeBadge'), ub = $('upscaleBadge'), gb = $('recognizeBadge');
             s > 0 ? (sb.textContent = s, show(sb)) : hide(sb);
             r > 0 ? (rb.textContent = r, show(rb)) : hide(rb);
             u > 0 ? (ub.textContent = u, show(ub)) : hide(ub);
+            g > 0 ? (gb.textContent = g, show(gb)) : hide(gb);
         }
         
         // ============ Tab ============
@@ -633,6 +636,7 @@
         initMarquee('splitList', 'splitElements');
         initMarquee('removeList', 'removeElements');
         initMarquee('upscaleList', 'upscaleItems');
+        initMarquee('recognizeList', 'recognizeItems');
         
         // ============ 元素详情（header 中显示） ============
         function updateElementDetail(tab, elements) {

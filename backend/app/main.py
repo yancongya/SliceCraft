@@ -15,8 +15,12 @@ import base64
 from .detectors import canny, flood, alpha, smart
 from .removers import flood_remover
 from .upscalers.real_esrgan import upscale_image, get_model_info, MODELS
+from .recognizers.api import router as recognize_router
 
 app = FastAPI(title="Image Splitter API")
+
+# 注册识别 API 路由
+app.include_router(recognize_router)
 
 # CORS for local frontend
 app.add_middleware(
