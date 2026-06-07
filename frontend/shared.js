@@ -1,4 +1,4 @@
-        const API = 'http://localhost:8001';
+        const API = window.location.origin;
         const $ = id => document.getElementById(id);
         const show = el => el.classList.remove('hidden');
         const hide = el => el.classList.add('hidden');

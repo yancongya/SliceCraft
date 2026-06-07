@@ -5,7 +5,7 @@
             e.stopPropagation();
             setStatus('加载示例...', true);
             try {
-                const res = await fetch('/example/sticker-annotation-sheet.png');
+                const res = await fetch('/example.png');
                 const blob = await res.blob();
                 uploadImage(new File([blob], 'example.png', { type: 'image/png' }));
             } catch { setStatus('加载失败', false, true); }
