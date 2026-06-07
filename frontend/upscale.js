@@ -210,7 +210,7 @@ $('getFromSplitBtn')?.addEventListener('click', () => {
         state.upscaleItems.push({
             index: state.upscaleItems.length + 1,
             src: el.preview,
-            name: '切分-' + el.index,
+            name: el.name || ('element_' + el.index),
             selected: true,
             processed: false,
             result: null
@@ -236,7 +236,7 @@ $('getFromRemoveBtn')?.addEventListener('click', () => {
         state.upscaleItems.push({
             index: state.upscaleItems.length + 1,
             src: el.result,
-            name: '抠图-' + el.index,
+            name: el.name || ('element_' + el.index),
             selected: true,
             processed: false,
             result: null
@@ -263,7 +263,7 @@ $('sendToUpscaleFromSplit')?.addEventListener('click', () => {
         state.upscaleItems.push({
             index: state.upscaleItems.length + 1,
             src: el.preview,
-            name: '切分-' + el.index,
+            name: el.name || ('element_' + el.index),
             selected: true,
             processed: false,
             result: null
@@ -290,7 +290,7 @@ $('sendToUpscaleFromRemove')?.addEventListener('click', () => {
         state.upscaleItems.push({
             index: state.upscaleItems.length + 1,
             src: el.result,
-            name: '抠图-' + el.index,
+            name: el.name || ('element_' + el.index),
             selected: true,
             processed: false,
             result: null

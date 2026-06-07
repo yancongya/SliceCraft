@@ -393,7 +393,15 @@
             Array.from(e.target.files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = () => {
-                    state.removeElements.push({ index: state.removeElements.length + 1, preview: reader.result, selected: true, processed: false, result: null });
+                    const idx = state.removeElements.length + 1;
+                    state.removeElements.push({ 
+                        index: idx, 
+                        preview: reader.result, 
+                        selected: true, 
+                        processed: false, 
+                        result: null,
+                        name: 'element_' + idx
+                    });
                     renderRemoveElements();
                 };
                 reader.readAsDataURL(file);

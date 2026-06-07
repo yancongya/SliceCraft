@@ -673,6 +673,8 @@
                 if (nameEl) {
                     nameEl.value = el.name || ('element_' + el.index);
                     nameEl.onchange = () => { el.name = nameEl.value; };
+                    // 回车时取消焦点
+                    nameEl.onkeydown = (e) => { if (e.key === 'Enter') nameEl.blur(); };
                 }
             } else {
                 detail.classList.add('hidden');

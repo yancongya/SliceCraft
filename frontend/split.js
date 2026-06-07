@@ -152,7 +152,11 @@
                 if (!res.ok) throw new Error('检测失败');
                 const data = await res.json();
                 $('splitImage').src = data.preview;
-                state.splitElements = (data.elements || []).map(el => ({ ...el, selected: true }));
+                state.splitElements = (data.elements || []).map((el, i) => ({ 
+                    ...el, 
+                    selected: true, 
+                    name: 'element_' + (i + 1)
+                }));
                 renderSplitElements();
                 setStatus('找到 ' + data.count + ' 个元素');
             } catch (err) { setStatus(err.message, false, true); }
@@ -325,7 +329,8 @@
                 preview: el.preview,
                 selected: true,
                 processed: false,
-                result: null
+                result: null,
+                name: el.name || ('element_' + el.index)
             }));
             
             renderRemoveElements();
