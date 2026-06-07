@@ -1,59 +1,40 @@
-"""CLIP 零样本图像识别器（ONNX 版本）"""
+"""CLIP 零样本图像识别器（ONNX 版本，使用预计算文本特征）"""
 
 import os
 import cv2
 import numpy as np
 import onnxruntime as ort
 
-# CLIP 视觉模型会话缓存
+# 视觉模型会话缓存
 _session_cache = None
 
-# 预定义的标签库（可根据需要扩展）
-DEFAULT_LABELS = [
-    # 图标类
-    "icon", "button", "logo", "symbol", "emoji",
-    "arrow", "checkmark", "cross", "plus", "minus",
-    "home", "settings", "search", "menu", "close",
-    "user", "avatar", "profile", "account",
-    "notification", "bell", "alert", "warning",
-    "download", "upload", "share", "link",
-    "edit", "delete", "copy", "paste", "save",
-    "play", "pause", "stop", "forward", "back",
-    "refresh", "sync", "loading", "spinner",
-    "filter", "sort", "grid", "list", "view",
+# 预计算的文本特征和标签
+_text_features = None
+_labels = None
+
+
+def _load_precomputed_features():
+    """加载预计算的文本特征和标签"""
+    global _text_features, _labels
     
-    # UI 元素
-    "tab", "panel", "card", "modal", "dialog",
-    "dropdown", "toggle", "switch", "slider",
-    "input", "form", "field", "label",
-    "header", "footer", "sidebar", "navbar",
-    "breadcrumb", "pagination", "progress",
-    "tooltip", "popover", "toast", "notification",
+    if _text_features is not None:
+        return _text_features, _labels
     
-    # 图片类型
-    "photo", "image", "picture", "screenshot",
-    "illustration", "drawing", "sketch", "painting",
-    "diagram", "chart", "graph", "map",
-    "text", "document", "file", "folder",
-    "sticker", "badge", "tag", "label",
+    features_dir = os.path.join(os.path.dirname(__file__), 'features')
+    features_path = os.path.join(features_dir, 'clip_text_features.npy')
+    labels_path = os.path.join(features_dir, 'clip_text_features_labels.txt')
     
-    # 内容类型
-    "person", "people", "group", "crowd",
-    "animal", "pet", "dog", "cat", "bird",
-    "food", "drink", "meal", "snack",
-    "vehicle", "car", "bike", "airplane",
-    "building", "house", "city", "landscape",
-    "nature", "tree", "flower", "mountain",
-    "sky", "cloud", "sun", "moon", "star",
-    "water", "ocean", "river", "lake",
+    if not os.path.exists(features_path):
+        raise FileNotFoundError(f"预计算特征文件不存在: {features_path}")
     
-    # 颜色和样式
-    "red", "blue", "green", "yellow", "orange",
-    "purple", "pink", "black", "white", "gray",
-    "dark", "light", "bright", "dim",
-    "square", "circle", "triangle", "heart",
-    "star", "diamond", "hexagon", "polygon",
-]
+    # 加载文本特征
+    _text_features = np.load(features_path)
+    
+    # 加载标签
+    with open(labels_path, 'r', encoding='utf-8') as f:
+        _labels = [line.strip() for line in f if line.strip()]
+    
+    return _text_features, _labels
 
 
 def _get_session():
@@ -96,38 +77,39 @@ def preprocess(image: np.ndarray) -> np.ndarray:
     return img_input
 
 
-def compute_text_features(texts: list) -> np.ndarray:
-    """
-    计算文本特征（简化版，使用随机特征）
-    
-    注意：完整的 CLIP 需要文本编码器，这里使用简化的特征
-    实际应用中应该使用完整的 CLIP 模型或预计算的文本特征
-    """
-    # 简化版：为每个文本生成固定的伪特征
-    # 实际应该使用 CLIP 的文本编码器
-    np.random.seed(42)  # 固定种子，保证一致性
-    features = np.random.randn(len(texts), 512).astype(np.float32)
-    # 归一化
-    features = features / np.linalg.norm(features, axis=1, keepdims=True)
-    return features
-
-
 def recognize(image: np.ndarray, labels: list = None, top_k: int = 3) -> list:
     """
     零样本识别图片内容
     
     Args:
         image: 输入图片 (BGR numpy array)
-        labels: 候选标签列表，如果为 None 则使用默认标签
+        labels: 候选标签列表（如果为 None，使用预计算的标签）
         top_k: 返回前 k 个结果
     
     Returns:
         [{"label": "icon", "confidence": 0.85}, ...]
     """
-    if labels is None:
-        labels = DEFAULT_LABELS
-    
     session = _get_session()
+    
+    # 加载预计算的文本特征
+    text_features, default_labels = _load_precomputed_features()
+    
+    # 如果指定了自定义标签，需要重新计算文本特征（简化版：使用默认特征的子集）
+    if labels is not None:
+        # 找到自定义标签在默认标签中的索引
+        indices = []
+        for label in labels:
+            if label in default_labels:
+                indices.append(default_labels.index(label))
+        
+        if indices:
+            text_features = text_features[indices]
+            active_labels = labels
+        else:
+            # 如果没有匹配的标签，使用默认标签
+            active_labels = default_labels
+    else:
+        active_labels = default_labels
     
     # 预处理图片
     img_input = preprocess(image)
@@ -142,9 +124,6 @@ def recognize(image: np.ndarray, labels: list = None, top_k: int = 3) -> list:
     # 归一化图片特征
     image_features = image_features / np.linalg.norm(image_features, axis=1, keepdims=True)
     
-    # 计算文本特征（简化版）
-    text_features = compute_text_features(labels)
-    
     # 计算相似度
     similarities = np.dot(image_features, text_features.T)[0]
     
@@ -157,11 +136,12 @@ def recognize(image: np.ndarray, labels: list = None, top_k: int = 3) -> list:
     results = []
     for idx in top_indices:
         confidence = float(probs[idx])
-        results.append({
-            "label": labels[idx],
-            "confidence": round(confidence, 4),
-            "index": int(idx)
-        })
+        if idx < len(active_labels):
+            results.append({
+                "label": active_labels[idx],
+                "confidence": round(confidence, 4),
+                "index": int(idx)
+            })
     
     return results
 
@@ -170,12 +150,12 @@ def recognize_with_custom_labels(image: np.ndarray, custom_labels: list, top_k: 
     """
     使用自定义标签进行零样本识别
     
-    Args:
-        image: 输入图片 (BGR numpy array)
-        custom_labels: 自定义标签列表
-        top_k: 返回前 k 个结果
-    
-    Returns:
-        [{"label": "custom_label", "confidence": 0.85}, ...]
+    注意：自定义标签必须在预计算的标签列表中，否则会被忽略
     """
     return recognize(image, labels=custom_labels, top_k=top_k)
+
+
+def get_available_labels() -> list:
+    """获取可用的标签列表"""
+    _, labels = _load_precomputed_features()
+    return labels

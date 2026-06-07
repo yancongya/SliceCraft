@@ -1,0 +1,182 @@
+icon
+button
+logo
+symbol
+emoji
+arrow
+checkmark
+cross
+plus
+minus
+home
+settings
+search
+menu
+close
+user
+avatar
+profile
+account
+notification
+bell
+alert
+warning
+download
+upload
+share
+link
+edit
+delete
+copy
+paste
+save
+play
+pause
+stop
+forward
+back
+refresh
+sync
+loading
+spinner
+filter
+sort
+grid
+list
+view
+tab
+panel
+card
+modal
+dialog
+dropdown
+toggle
+switch
+slider
+input
+form
+field
+label
+header
+footer
+sidebar
+navbar
+breadcrumb
+pagination
+progress
+tooltip
+popover
+toast
+notification
+photo
+image
+picture
+screenshot
+illustration
+drawing
+sketch
+painting
+diagram
+chart
+graph
+map
+text
+document
+file
+folder
+sticker
+badge
+tag
+label
+person
+people
+group
+crowd
+animal
+pet
+dog
+cat
+bird
+food
+drink
+meal
+snack
+vehicle
+car
+bike
+airplane
+building
+house
+city
+landscape
+nature
+tree
+flower
+mountain
+sky
+cloud
+sun
+moon
+star
+water
+ocean
+river
+lake
+red
+blue
+green
+yellow
+orange
+purple
+pink
+black
+white
+gray
+dark
+light
+bright
+dim
+square
+circle
+triangle
+heart
+star shape
+diamond
+hexagon
+polygon
+settings gear
+search magnifier
+home house
+user person
+mail envelope
+phone call
+camera photo
+music note
+video play
+calendar date
+clock time
+location pin
+lock secure
+key unlock
+eye view
+bookmark save
+tag label
+flag mark
+lightning bolt
+fire flame
+star favorite
+heart like
+thumb up
+thumb down
+share send
+download save
+upload load
+refresh reload
+sync update
+loading wait
+check success
+cross close
+plus add
+minus remove
+arrow direction
+chevron navigate

@@ -56,9 +56,16 @@ async def recognize_clip(
     
     try:
         results = clip.recognize(img, labels=label_list, top_k=top_k)
+        # 获取使用的标签
+        try:
+            available_labels = clip.get_available_labels()
+            labels_used = label_list or available_labels[:20]
+        except:
+            labels_used = label_list or []
+        
         return JSONResponse({
             "model": "clip",
-            "labels_used": label_list or clip.DEFAULT_LABELS[:20],  # 返回使用的标签
+            "labels_used": labels_used,
             "results": results,
             "best_label": results[0]["label"] if results else None,
             "best_confidence": results[0]["confidence"] if results else None,
@@ -163,7 +170,15 @@ async def get_recognition_models():
 @router.get("/labels")
 async def get_default_labels():
     """获取 CLIP 默认标签列表"""
-    return JSONResponse({
-        "labels": clip.DEFAULT_LABELS,
-        "total": len(clip.DEFAULT_LABELS),
-    })
+    try:
+        labels = clip.get_available_labels()
+        return JSONResponse({
+            "labels": labels,
+            "total": len(labels),
+        })
+    except Exception as e:
+        return JSONResponse({
+            "labels": [],
+            "total": 0,
+            "error": str(e)
+        })
