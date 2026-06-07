@@ -1,3 +1,12 @@
+# 修复 torchvision 新版兼容性问题（必须在导入 realesrgan 之前）
+try:
+    import torchvision.transforms
+    if not hasattr(torchvision.transforms, 'functional_tensor'):
+        import torchvision.transforms.functional as F
+        torchvision.transforms.functional_tensor = F
+except Exception:
+    pass
+
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse

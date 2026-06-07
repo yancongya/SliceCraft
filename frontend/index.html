@@ -24,7 +24,7 @@
                 </button>
                 <button class="tab" data-panel="upscale">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
-                    AI 放大
+                    AI 放大 <span class="badge hidden" id="upscaleBadge">0</span>
                 </button>
             </div>
             <div class="spacer"></div>
@@ -207,12 +207,14 @@
                                 <div class="upload-hint">或点击选择 · PNG、JPG、WebP</div>
                             </div>
                         </div>
-                        <div class="elements-bar" id="upscaleBar" style="flex: 3;">
+                        <div class="elements-bar hidden" id="upscaleBar" style="flex: 3;">
                             <div class="bar-resize"></div>
                             <div class="elements-header">
-                                <span class="elements-title">放大对比</span>
+                                <span class="elements-title">待放大元素</span>
                                 <div class="elements-actions">
-                                    <span class="elements-count" id="upscaleImageInfo">未加载图片</span>
+                                    <span class="elements-count" id="upscaleCount">0 个</span>
+                                    <button class="btn-sm btn-sm-ghost" id="selectUpscaleAll">全选</button>
+                                    <button class="btn-sm btn-sm-ghost" id="deselectUpscaleAll">取消</button>
                                 </div>
                             </div>
                             <div class="elements-container single-row" id="upscaleList"></div>

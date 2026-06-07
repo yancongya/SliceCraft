@@ -6,6 +6,15 @@ import numpy as np
 from PIL import Image
 from typing import Optional
 
+# 修复 torchvision 新版兼容性问题（必须在导入 realesrgan 之前）
+try:
+    import torchvision.transforms
+    if not hasattr(torchvision.transforms, 'functional_tensor'):
+        import torchvision.transforms.functional as F
+        torchvision.transforms.functional_tensor = F
+except Exception:
+    pass
+
 # 模型配置
 MODELS = {
     "RealESRGAN_x4plus": {
@@ -33,6 +42,11 @@ def _get_upscaler(model_name: str, tile_size: int = 0, half_precision: bool = Tr
     """获取或创建 upscaler 实例（带缓存）"""
     if model_name in _upscaler_cache:
         return _upscaler_cache[model_name]
+
+    # 修复 torchvision 兼容性问题
+    import torchvision
+    if not hasattr(torchvision.transforms, 'functional_tensor'):
+        torchvision.transforms.functional_tensor = torchvision.transforms.functional
 
     from realesrgan import RealESRGANer
     from basicsr.archs.rrdbnet_arch import RRDBNet

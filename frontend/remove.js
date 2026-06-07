@@ -692,6 +692,7 @@
         // 初始化元素条框选
         initElementsMarquee('splitList', 'splitElements');
         initElementsMarquee('removeList', 'removeElements');
+        initElementsMarquee('upscaleList', 'upscaleItems');
         
         // 启动 ResizeObserver
         document.querySelectorAll('.elements-container').forEach(el => {
@@ -702,4 +703,8 @@
         const splitPreview = $('splitPreview');
         if (splitPreview) {
             resizeObserver.observe(splitPreview);
+        }
+        const upscalePreview = $('upscalePreview');
+        if (upscalePreview) {
+            resizeObserver.observe(upscalePreview);
         }

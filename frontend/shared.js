@@ -17,7 +17,8 @@
         const state = {
             splitImageId: null,
             splitElements: [],
-            removeElements: []
+            removeElements: [],
+            upscaleItems: []
         };
         
         // ============ 工具函数 ============
@@ -29,9 +30,11 @@
         function updateBadges() {
             const s = state.splitElements.filter(e => e.selected).length;
             const r = state.removeElements.filter(e => e.selected).length;
-            const sb = $('splitBadge'), rb = $('removeBadge');
+            const u = (state.upscaleItems || []).filter(e => e.selected).length;
+            const sb = $('splitBadge'), rb = $('removeBadge'), ub = $('upscaleBadge');
             s > 0 ? (sb.textContent = s, show(sb)) : hide(sb);
             r > 0 ? (rb.textContent = r, show(rb)) : hide(rb);
+            u > 0 ? (ub.textContent = u, show(ub)) : hide(ub);
         }
         
         // ============ Tab ============
@@ -629,6 +632,7 @@
         // ============ 初始化框选 ============
         initMarquee('splitList', 'splitElements');
         initMarquee('removeList', 'removeElements');
+        initMarquee('upscaleList', 'upscaleItems');
         
         // ============ Toast ============
         function showToast(msg, type = '') {
