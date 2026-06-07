@@ -69,10 +69,16 @@
                                     <span class="elements-count" id="splitCount">0 个</span>
                                     <button class="btn-sm btn-sm-ghost" id="selectSplitAll">全选</button>
                                     <button class="btn-sm btn-sm-ghost" id="deselectSplitAll">取消</button>
-                                    <button class="btn-sm btn-sm-primary" id="sendBtn">
-                                        发送到抠图
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                                    </button>
+                                    <div class="send-group">
+                                        <button class="btn-sm btn-sm-primary" id="sendBtn">
+                                            发送到抠图
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                                        </button>
+                                        <button class="btn-sm btn-sm-primary" id="sendToUpscaleFromSplit">
+                                            发送到放大
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                                        </button>
+                                    </div>
                                     <div class="psd-layout" id="splitPsdLayout">
                                         <span class="psd-label">PSD:</span>
                                         <label><input type="radio" name="splitPsdPos" value="bbox" checked> 按位置</label>
@@ -201,8 +207,15 @@
                                 <div class="upload-hint">或点击选择 · PNG、JPG、WebP</div>
                             </div>
                         </div>
-                        <div class="upscale-info-bar hidden" id="upscaleInfoBar">
-                            <span id="upscaleImageInfo"></span>
+                        <div class="elements-bar" id="upscaleBar" style="flex: 3;">
+                            <div class="bar-resize"></div>
+                            <div class="elements-header">
+                                <span class="elements-title">放大对比</span>
+                                <div class="elements-actions">
+                                    <span class="elements-count" id="upscaleImageInfo">未加载图片</span>
+                                </div>
+                            </div>
+                            <div class="elements-container single-row" id="upscaleList"></div>
                         </div>
                     </div>
                     <div class="sidebar">
@@ -240,6 +253,9 @@
                             </button>
                             <button class="btn-outline" id="getFromRemoveBtn" style="margin-top:8px;">
                                 从抠图面板获取
+                            </button>
+                            <button class="btn-outline" id="upscaleClearBtn" style="margin-top:8px;">
+                                清空列表
                             </button>
                             <div class="field-hint" style="margin-top:8px;">获取选中的元素或处理结果</div>
                         </div>
@@ -319,6 +335,10 @@
                                         <label><input type="radio" name="removePsdPos" value="bbox" checked> 按位置</label>
                                         <label><input type="radio" name="removePsdPos" value="zero"> 左上对齐</label>
                                     </div>
+                                    <button class="btn-sm btn-sm-primary" id="sendToUpscaleFromRemove">
+                                        发送到放大
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                                    </button>
                                     <div class="export-group">
                                         <button class="btn-sm btn-sm-ghost" id="removeExport" title="导出" disabled>导出 ▾</button>
                                         <div class="export-dropdown hidden" id="removeExportMenu">

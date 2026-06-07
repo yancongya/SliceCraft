@@ -683,3 +683,9 @@
             border-color: var(--accent);
             background: var(--accent-bg);
         }
+        
+        /* 发送按钮组 */
+        .send-group {
+            display: flex;
+            gap: 4px;
+        }
