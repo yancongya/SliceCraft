@@ -5,6 +5,8 @@ services:
     ports:
       - "8001:8001"
     volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
       - /vol1/1000/services/data/image-splitter:/app/data
       - /vol1/1000/services/data/image-splitter-cache/u2net:/root/.u2net
       - /vol1/1000/services/data/image-splitter-cache/huggingface:/root/.cache/huggingface
