@@ -1,6 +1,6 @@
 services:
   image-splitter:
-    build: .
+    image: image-splitter:amd64
     container_name: image-splitter
     ports:
       - "8001:8001"
