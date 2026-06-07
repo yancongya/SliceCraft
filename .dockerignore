@@ -1,9 +1,12 @@
 venv/
 __pycache__/
 *.pyc
-.git
+.git/
 .gitignore
 .DS_Store
+*.md
 *.command
 example/
 test_*.py
+scripts/
+download_models.sh

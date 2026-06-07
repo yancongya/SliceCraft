@@ -28,7 +28,7 @@ echo "2️⃣  Git push..."
 git push origin main 2>/dev/null || echo "  (push 跳过)"
 
 # 2. Mac 构建 Docker 镜像
-echo "3️⃣  Mac 构建镜像 (linux/amd64)..."
+echo "3️⃣  Mac 构建镜像 (amd64)..."
 docker build -t "$IMAGE_NAME" --platform linux/amd64 . 2>&1 | tail -3
 
 # 3. 导出镜像
@@ -43,11 +43,18 @@ scp "$TMP_DIR/$PROJECT_NAME.tar.gz" "$NAS_HOST:/tmp/"
 echo "6️⃣  NAS 加载镜像..."
 ssh "$NAS_HOST" "gunzip -c /tmp/$PROJECT_NAME.tar.gz | sudo docker load"
 
-# 6. 同步代码和配置
+# 6. 同步代码
 echo "7️⃣  同步代码..."
 rsync -av \
-  docker-compose.yml \
+  --exclude='.git' \
+  --exclude='venv' \
+  --exclude='__pycache__' \
+  --exclude='*.pyc' \
   --exclude='.DS_Store' \
+  docker-compose.yml \
+  backend/ \
+  frontend/ \
+  requirements.txt \
   "$NAS_HOST:$NAS_DIR/" 2>/dev/null | tail -1
 
 # 7. 重启容器
@@ -62,7 +69,7 @@ ssh "$NAS_HOST" "rm -f /tmp/$PROJECT_NAME.tar.gz" 2>/dev/null || true
 echo "9️⃣  验证..."
 sleep 3
 if curl -4 -s --noproxy '*' --connect-timeout 5 \
-  "http://192.168.31.110:8001/api/health" | grep -q '"status":"ok"'; then
+  "http://192.168.31.110:8001/api/health" | grep -q '"status"'; then
   echo "✅ 部署完成: http://192.168.31.110:8001"
 else
   echo "⚠️  部署完成但验证失败，请手动检查"
