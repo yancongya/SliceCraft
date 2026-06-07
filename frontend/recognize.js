@@ -219,7 +219,8 @@ $('applyNamesBtn')?.addEventListener('click', () => {
             labelCounts[el.label] = 0;
         }
         labelCounts[el.label]++;
-        el.name = `${el.label}_${labelCounts[el.label]:02d}`;
+        const num = String(labelCounts[el.label]).padStart(2, '0');
+        el.name = `${el.label}_${num}`;
     });
 
     renderRecognizeElements();
@@ -266,6 +267,3 @@ $('deselectRecognizeAll')?.addEventListener('click', () => {
     (state.recognizeItems || []).forEach(e => e.selected = false);
     renderRecognizeElements();
 });
-
-// 初始化
-state.recognizeItems = [];
