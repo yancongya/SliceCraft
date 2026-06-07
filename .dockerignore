@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.git
+.gitignore
+.DS_Store
+*.command
+example/
+test_*.py
