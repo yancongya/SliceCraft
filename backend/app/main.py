@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import cv2
 import numpy as np
 from PIL import Image
@@ -508,6 +509,12 @@ async def export_psd_from_elements(
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
+
+# 静态文件服务（前端）
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend")
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 if __name__ == "__main__":
