@@ -9,6 +9,10 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 预下载模型（打包进镜像，运行时不需要下载）
+RUN python3 -c "from rembg import new_session; new_session('u2net'); print('u2net OK')"
+RUN python3 -c "from rembg import new_session; new_session('isnet-general-use'); print('isnet OK')"
+
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 
