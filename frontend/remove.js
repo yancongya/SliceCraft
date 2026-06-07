@@ -582,6 +582,7 @@
             }
             
             setStatus('完成，处理了 ' + sel.length + ' 个元素');
+            showToast('抠图完成 ' + sel.length + ' 个', 'success');
             $('processBtn').disabled = false;
             $('removeExport').disabled = false;
         });

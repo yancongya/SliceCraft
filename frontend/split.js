@@ -159,6 +159,7 @@
                 }));
                 renderSplitElements();
                 setStatus('找到 ' + data.count + ' 个元素');
+                showToast('检测到 ' + data.count + ' 个元素', 'success');
             } catch (err) { setStatus(err.message, false, true); }
             finally { isDetecting = false; }
         }

@@ -612,7 +612,7 @@
         
         /* === Neumorphic Toast === */
         .toast-container {
-            position: fixed; bottom: 60px; right: 20px; z-index: 2001;
+            position: fixed; top: 60px; right: 20px; z-index: 2001;
             display: flex; flex-direction: column; gap: 8px;
         }
         .toast {
