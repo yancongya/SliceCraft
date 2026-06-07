@@ -317,9 +317,7 @@ $('upscaleModel')?.addEventListener('change', e => {
     const desc = $('modelDescription');
     if (desc) {
         const descriptions = {
-            'RealESRGAN_x4plus': '通用场景，质量最佳，适合照片和复杂图像',
-            'RealESRGAN_x2plus': '2倍放大，适合小幅提升或保持原图风格',
-            'RealESRGAN_x4plus_anime_6B': '二次元/插画专用，保持线条清晰'
+            'realesrgan-light': 'ONNX 轻量版，4.7MB，CPU 友好，速度快'
         };
         desc.textContent = descriptions[model] || '';
     }
