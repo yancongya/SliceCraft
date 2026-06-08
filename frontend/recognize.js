@@ -7,7 +7,9 @@ const recognizeState = {
     results: []
 };
 
-// ============ 获取内容 ============
+// state.recognizeItems 在 shared.js 中初始化
+
+// ============ 获取内容（和其他 tab 统一模式） ============
 $('getFromSplitForRecognize')?.addEventListener('click', () => {
     const selected = state.splitElements.filter(e => e.selected);
     if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
@@ -68,29 +70,30 @@ $('getFromUpscaleForRecognize')?.addEventListener('click', () => {
     showToast(`已同步 ${processed.length} 个元素`);
 });
 
-// ============ 渲染识别元素列表 ============
+// ============ 渲染卡片（和 splitElements/removeElements 完全一致的模式） ============
 function renderRecognizeElements() {
-    const has = (state.recognizeItems || []).length > 0;
+    const has = state.recognizeItems.length > 0;
     $('recognizeBar').classList.toggle('hidden', !has);
-    $('recognizeCount').textContent = (state.recognizeItems || []).length + ' 个';
+    $('recognizeCount').textContent = state.recognizeItems.length + ' 个';
 
     const list = $('recognizeList');
     if (!list) return;
     list.innerHTML = '';
 
-    (state.recognizeItems || []).forEach((el, i) => {
+    state.recognizeItems.forEach((el, i) => {
         const div = document.createElement('div');
         div.className = 'elem-card' + (el.selected ? ' selected' : '');
         div.dataset.index = el.index;
         
-        // 显示图片和标签
+        // 标签显示
         let labelHtml = '';
         if (el.label) {
-            labelHtml = `<span class="rec-label" style="position:absolute;bottom:2px;left:2px;right:2px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:1px 3px;border-radius:2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${el.label}</span>`;
+            labelHtml = '<span style="position:absolute;bottom:2px;left:2px;right:2px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:1px 3px;border-radius:2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + el.label + '</span>';
         }
         
-        div.innerHTML = `<img src="${el.src}"><span class="num">${el.index}</span>${labelHtml}<button class="card-delete" title="删除">×</button>`;
+        div.innerHTML = '<img src="' + el.src + '"><span class="num">' + el.index + '</span>' + labelHtml + '<button class="card-delete" title="删除">×</button>';
         
+        // 点击：单选（和 split/remove 统一）
         div.addEventListener('click', e => {
             if (e.target.classList.contains('card-delete')) return;
             if (e.shiftKey) {
@@ -100,14 +103,15 @@ function renderRecognizeElements() {
                 el.selected = true;
             }
             renderRecognizeElements();
-            updateElementDetail('recognize', state.recognizeItems);
         });
         
+        // 双击：预览
         div.addEventListener('dblclick', e => {
             if (e.target.classList.contains('card-delete')) return;
             openModal(el.src);
         });
         
+        // 删除
         div.querySelector('.card-delete').addEventListener('click', e => {
             e.stopPropagation();
             state.recognizeItems.splice(i, 1);
@@ -134,13 +138,12 @@ $('recognizeModel')?.addEventListener('change', e => {
         desc.textContent = descriptions[recognizeState.model] || '';
     }
     
-    // 显示/隐藏自定义标签输入
     $('customLabelsSection').classList.toggle('hidden', recognizeState.model !== 'clip');
 });
 
 // ============ 开始识别 ============
 $('recognizeBtn')?.addEventListener('click', async () => {
-    const selected = (state.recognizeItems || []).filter(e => e.selected);
+    const selected = state.recognizeItems.filter(e => e.selected);
     if (!selected.length) { showToast('请先选择元素', 'error'); return; }
 
     $('recognizeBtn').disabled = true;
@@ -155,11 +158,10 @@ $('recognizeBtn')?.addEventListener('click', async () => {
 
     for (let i = 0; i < selected.length; i++) {
         const el = selected[i];
-        $('recognizeProgressText').textContent = `识别中 (${i + 1}/${total})...`;
-        setStatus(`识别中 (${i + 1}/${total})...`, true);
+        $('recognizeProgressText').textContent = '处理中 (' + (i + 1) + '/' + total + ')...';
+        setStatus('识别中 (' + (i + 1) + '/' + total + ')...', true);
 
         try {
-            // 上传图片
             const blob = await fetch(el.src).then(r => r.blob());
             const fd = new FormData();
             fd.append('file', blob, 'image.png');
@@ -167,21 +169,18 @@ $('recognizeBtn')?.addEventListener('click', async () => {
             if (!upRes.ok) throw new Error('上传失败');
             const upData = await upRes.json();
 
-            // 调用识别 API
             const recognizeFd = new FormData();
             recognizeFd.append('image_id', upData.image_id);
             recognizeFd.append('top_k', '1');
             if (labels) recognizeFd.append('labels', labels);
 
-            const res = await fetch(API + `/api/recognize/${model}`, { method: 'POST', body: recognizeFd });
+            const res = await fetch(API + '/api/recognize/' + model, { method: 'POST', body: recognizeFd });
             if (!res.ok) {
                 const err = await res.json();
                 throw new Error(err.detail || '识别失败');
             }
 
             const data = await res.json();
-
-            // 更新元素信息
             el.label = data.best_label;
             el.confidence = data.best_confidence;
             el.suggestedName = data.best_label || el.name;
@@ -194,21 +193,19 @@ $('recognizeBtn')?.addEventListener('click', async () => {
 
     renderRecognizeElements();
 
-    // 启用应用名称按钮
     $('applyNamesBtn').disabled = false;
     $('recognizeBtn').disabled = false;
     $('recognizeProgress').style.display = 'none';
 
-    setStatus(`识别完成: ${successCount}/${total}`);
-    showToast(`识别完成 ${successCount}/${total} 个`);
+    setStatus('识别完成: ' + successCount + '/' + total);
+    showToast('识别完成 ' + successCount + '/' + total + ' 个');
 });
 
 // ============ 应用识别结果到名称 ============
 $('applyNamesBtn')?.addEventListener('click', () => {
-    const items = (state.recognizeItems || []).filter(e => e.label);
+    const items = state.recognizeItems.filter(e => e.label);
     if (!items.length) { showToast('没有识别结果', 'error'); return; }
 
-    // 统计标签，生成唯一名称
     const labelCounts = {};
     items.forEach(el => {
         if (!labelCounts[el.label]) {
@@ -216,7 +213,7 @@ $('applyNamesBtn')?.addEventListener('click', () => {
         }
         labelCounts[el.label]++;
         const num = String(labelCounts[el.label]).padStart(2, '0');
-        el.name = `${el.label}_${num}`;
+        el.name = el.label + '_' + num;
     });
 
     renderRecognizeElements();
@@ -225,28 +222,20 @@ $('applyNamesBtn')?.addEventListener('click', () => {
 
 // ============ 同步名称到其他 tab ============
 $('syncNamesBtn')?.addEventListener('click', () => {
-    const items = (state.recognizeItems || []).filter(e => e.name);
+    const items = state.recognizeItems.filter(e => e.name);
     if (!items.length) { showToast('没有可同步的名称', 'error'); return; }
 
-    // 同步到切分 tab
     items.forEach(recEl => {
         const splitEl = state.splitElements.find(el => el.index === recEl.index);
-        if (splitEl) {
-            splitEl.name = recEl.name;
-        }
+        if (splitEl) splitEl.name = recEl.name;
         
         const removeEl = state.removeElements.find(el => el.index === recEl.index);
-        if (removeEl) {
-            removeEl.name = recEl.name;
-        }
+        if (removeEl) removeEl.name = recEl.name;
         
         const upscaleEl = state.upscaleItems.find(el => el.index === recEl.index);
-        if (upscaleEl) {
-            upscaleEl.name = recEl.name;
-        }
+        if (upscaleEl) upscaleEl.name = recEl.name;
     });
 
-    // 刷新其他 tab 的显示
     if (typeof renderSplitElements === 'function') renderSplitElements();
     if (typeof renderRemoveElements === 'function') renderRemoveElements();
     if (typeof renderUpscaleElements === 'function') renderUpscaleElements();
@@ -256,17 +245,17 @@ $('syncNamesBtn')?.addEventListener('click', () => {
 
 // ============ 全选/取消 ============
 $('selectRecognizeAll')?.addEventListener('click', () => {
-    (state.recognizeItems || []).forEach(e => e.selected = true);
+    state.recognizeItems.forEach(e => e.selected = true);
     renderRecognizeElements();
 });
 $('deselectRecognizeAll')?.addEventListener('click', () => {
-    (state.recognizeItems || []).forEach(e => e.selected = false);
+    state.recognizeItems.forEach(e => e.selected = false);
     renderRecognizeElements();
 });
 
-// 初始化发送下拉菜单
+// ============ 发送下拉菜单 ============
 initSendDropdown('recognizeSendBtn', 'recognizeSendMenu', (target) => {
-    const sel = (state.recognizeItems || []).filter(e => e.selected);
+    const sel = state.recognizeItems.filter(e => e.selected);
     if (!sel.length) { showToast('请先选择元素', 'error'); return; }
     
     if (target === 'split') {
@@ -303,5 +292,5 @@ initSendDropdown('recognizeSendBtn', 'recognizeSendMenu', (target) => {
         document.querySelector('.tab[data-panel="upscale"]').click();
     }
     
-    showToast(`已同步 ${sel.length} 个元素`);
+    showToast('已同步 ' + sel.length + ' 个元素');
 });
