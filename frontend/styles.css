@@ -273,6 +273,7 @@
             user-select: none;
             -webkit-user-select: none;
             position: relative;
+            min-height: 40px;
         }
         
         /* 单行模式 - 横向滚动 */
