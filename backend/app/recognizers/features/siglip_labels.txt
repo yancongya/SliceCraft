@@ -1,0 +1,640 @@
+icon
+button
+logo
+symbol
+emoji
+arrow
+checkmark
+cross
+plus
+minus
+home
+settings
+search
+menu
+close
+user
+avatar
+profile
+account
+notification
+bell
+alert
+warning
+download
+upload
+share
+link
+edit
+delete
+copy
+paste
+save
+play
+pause
+stop
+forward
+back
+refresh
+sync
+loading
+spinner
+filter
+sort
+grid
+list
+view
+tab
+panel
+card
+modal
+dialog
+dropdown
+toggle
+switch
+slider
+input
+form
+field
+label
+header
+footer
+sidebar
+navbar
+breadcrumb
+pagination
+progress
+tooltip
+popover
+toast
+photo
+image
+picture
+screenshot
+illustration
+drawing
+sketch
+painting
+diagram
+chart
+graph
+map
+text
+document
+file
+folder
+sticker
+badge
+tag
+person
+people
+group
+crowd
+animal
+pet
+dog
+cat
+bird
+food
+drink
+meal
+snack
+vehicle
+car
+bike
+airplane
+building
+house
+city
+landscape
+nature
+tree
+flower
+mountain
+sky
+cloud
+sun
+moon
+star
+water
+ocean
+river
+lake
+red
+blue
+green
+yellow
+orange
+purple
+pink
+black
+white
+gray
+dark
+light
+bright
+dim
+square
+circle
+triangle
+heart
+star shape
+diamond
+hexagon
+polygon
+settings gear
+search magnifier
+home house
+user person
+mail envelope
+phone call
+camera photo
+music note
+video play
+calendar date
+clock time
+location pin
+lock secure
+key unlock
+eye view
+bookmark save
+tag label
+flag mark
+lightning bolt
+fire flame
+star favorite
+heart like
+thumb up
+thumb down
+share send
+download save
+upload load
+refresh reload
+sync update
+loading wait
+check success
+cross close
+plus add
+minus remove
+arrow direction
+chevron navigate
+accordion
+carousel
+timeline
+chip
+stepper
+drawer
+overlay
+backdrop
+separator
+divider
+spacer
+rating
+comment
+chat bubble
+message
+feed
+rectangle
+oval
+ellipse
+arc
+curve
+wave
+zigzag
+spiral
+pill shape
+crescent
+teardrop
+ribbon
+banner
+strip
+bar
+column
+row
+wifi
+bluetooth
+battery
+signal
+antenna
+printer
+scanner
+monitor
+keyboard
+mouse
+microphone
+speaker
+headphones
+cable
+plug
+power
+light bulb
+leaf
+grass
+rock
+stone
+sand
+snow
+rain
+rainbow
+leaf
+branch
+trunk
+seed
+fruit
+vegetable
+plant
+garden
+field
+forest
+river
+waterfall
+pond
+beach
+coast
+island
+desert
+valley
+hill
+cliff
+cave
+fire
+smoke
+ice
+frost
+gold
+silver
+bronze
+copper
+steel
+cyan
+magenta
+lime
+teal
+indigo
+violet
+brown
+beige
+maroon
+navy
+olive
+coral
+salmon
+cream
+ivory
+mint
+rose
+ruby
+emerald
+sapphire
+amber
+charcoal
+pearl
+hover
+focus
+active
+disabled
+selected
+expanded
+collapsed
+visible
+hidden
+locked
+unlocked
+solid
+gradient
+striped
+dotted
+dashed
+checkered
+plaid
+brick
+tile
+mosaic
+marble
+wood
+metal
+glass
+plastic
+paper
+fabric
+leather
+stone
+concrete
+webpage
+dashboard
+report
+invoice
+receipt
+ticket
+coupon
+certificate
+contract
+letter
+note
+memo
+schedule
+planner
+journal
+notebook
+magazine
+newspaper
+book
+cover
+poster
+flyer
+wizard
+onboarding
+tutorial
+walkthrough
+context menu
+hamburger menu
+tabs
+toolbar
+property panel
+layer panel
+color picker
+date picker
+time picker
+file picker
+image cropper
+slider control
+knob
+dial
+gauge
+meter
+scale
+ruler
+compass
+clock face
+timer
+stopwatch
+barcode
+QR code
+barcode scanner
+fingerprint
+face
+eye
+mouth
+nose
+ear
+hand
+finger
+arm
+leg
+foot
+body
+hair
+beard
+mustache
+glasses
+sunglasses
+hat
+cap
+shirt
+dress
+pants
+shoes
+bag
+backpack
+suitcase
+umbrella
+chain
+rope
+frame
+border
+outline
+background
+foreground
+watermark
+stamp
+seal
+medal
+award
+trophy
+badge
+pin
+button badge
+toggle button
+radio button
+checkbox
+combo box
+list box
+tree view
+table
+spreadsheet
+cell
+row header
+column header
+scrollbar
+resize handle
+grip
+handle
+anchor
+connector
+line connector
+arrow connector
+flowchart
+flowchart box
+decision diamond
+process box
+terminal
+data table
+pivot table
+heatmap
+scatter plot
+line chart
+bar chart
+pie chart
+donut chart
+area chart
+bubble chart
+radar chart
+candlestick chart
+waterfall chart
+funnel chart
+sparkline
+tree diagram
+network diagram
+venn diagram
+mind map
+organization chart
+floor plan
+blueprint
+wireframe
+mockup
+prototype
+logo mark
+wordmark
+brand mark
+favicon
+app icon
+launcher icon
+action icon
+navigation icon
+status icon
+indicator
+bullet
+number
+list item
+menu item
+action item
+breadcrumb item
+tab item
+step
+step indicator
+progress bar
+progress circle
+loading bar
+loading spinner
+skeleton
+placeholder
+empty state
+error state
+success state
+warning state
+info state
+notification badge
+count badge
+online indicator
+offline indicator
+status dot
+alert banner
+announcement
+promotion
+offer
+discount
+sale
+new badge
+popular badge
+recommended
+featured
+sponsored
+advertisement
+banner ad
+popup ad
+interstitial
+full screen
+split view
+side panel
+right panel
+left panel
+bottom sheet
+top bar
+status bar
+action bar
+navigation bar
+toolbar
+search bar
+address bar
+url bar
+command bar
+tab bar
+bottom navigation
+side navigation
+top navigation
+breadcrumb navigation
+step navigation
+pagination
+infinite scroll
+pull to refresh
+drag handle
+resize corner
+close button
+maximize button
+minimize button
+restore button
+fullscreen button
+share button
+like button
+comment button
+more button
+overflow menu
+kebab menu
+meatball menu
+dropdown arrow
+caret
+chevron up
+chevron down
+chevron left
+chevron right
+expand icon
+collapse icon
+drag icon
+reorder icon
+sort icon
+filter icon
+search icon
+settings icon
+help icon
+info icon
+question mark
+exclamation
+warning sign
+error icon
+success icon
+plus circle
+minus circle
+check circle
+cross circle
+info circle
+question circle
+exclamation circle
+plus square
+minus square
+check square
+cross square
+play circle
+stop circle
+pause circle
+fast forward
+rewind
+skip forward
+skip back
+shuffle
+repeat
+volume
+volume off
+volume low
+volume medium
+volume high
+mute
+unmute
+headset
+earphone
+airplay
+cast
+screen mirror
+picture in picture
+closed caption
+subtitles
+language
+translate
+accessibility
+zoom in
+zoom out
+zoom reset
+pan
+rotate
+flip horizontal
+flip vertical
+crop
+resize
+compress
+expand
+fit to width
+fit to height
+fit to screen
+original size
+aspect ratio
+landscape
+portrait
+square format
+thumbnail
+preview
+gallery
+album
+slideshow
+presentation
+slide
+deck
+frame by frame

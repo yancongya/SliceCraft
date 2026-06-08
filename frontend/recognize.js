@@ -2,7 +2,6 @@
 
 // 识别状态
 const recognizeState = {
-    model: 'clip',
     customLabels: '',
     results: []
 };
@@ -127,18 +126,7 @@ function renderRecognizeElements() {
 }
 
 // ============ 模型选择 ============
-$('recognizeModel')?.addEventListener('change', e => {
-    recognizeState.model = e.target.value;
-    const desc = $('recognizeModelDesc');
-    if (desc) {
-        const descriptions = {
-            'clip': '零样本分类，可自定义标签，更灵活'
-        };
-        desc.textContent = descriptions[recognizeState.model] || '';
-    }
-    
-    $('customLabelsSection').classList.toggle('hidden', recognizeState.model !== 'clip');
-});
+// 仅使用 CLIP/SigLIP 零样本模型，无需模型选择器
 
 // ============ 开始识别 ============
 $('recognizeBtn')?.addEventListener('click', async () => {
@@ -149,8 +137,7 @@ $('recognizeBtn')?.addEventListener('click', async () => {
     $('recognizeProgress').style.display = 'flex';
     setStatus('识别中...', true);
 
-    const model = recognizeState.model;
-    const labels = recognizeState.model === 'clip' ? $('customLabelsInput')?.value : null;
+    const labels = $('customLabelsInput')?.value;
 
     let successCount = 0;
     const total = selected.length;
@@ -173,7 +160,7 @@ $('recognizeBtn')?.addEventListener('click', async () => {
             recognizeFd.append('top_k', '1');
             if (labels) recognizeFd.append('labels', labels);
 
-            const res = await fetch(API + '/api/recognize/' + model, { method: 'POST', body: recognizeFd });
+            const res = await fetch(API + '/api/recognize/clip', { method: 'POST', body: recognizeFd });
             if (!res.ok) {
                 const err = await res.json();
                 throw new Error(err.detail || '识别失败');
