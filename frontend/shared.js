@@ -1,4 +1,8 @@
         const API = (() => {
+            // Tauri 桌面版：后端在 localhost:8001
+            if (typeof __TAURI__ !== 'undefined' || window.__TAURI__) {
+                return 'http://127.0.0.1:8001';
+            }
             const port = window.location.port;
             const devPorts = ['3000', '3001', '3002', '5173', '8080'];
             if (devPorts.includes(port)) {

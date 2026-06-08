@@ -4,3 +4,7 @@ __pycache__/
 .DS_Store
 *.tar.gz
 backend/app/upscalers/weights/
+src-tauri/target/
+src-tauri/icons/*.png
+src-tauri/icons/*.ico
+src-tauri/icons/*.icns

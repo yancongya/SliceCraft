@@ -1,0 +1,14 @@
+{
+  "name": "slicecraft",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SliceCraft - 界面元素提取与识别",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
