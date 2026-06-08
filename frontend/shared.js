@@ -1,4 +1,11 @@
-        const API = window.location.origin;
+        const API = (() => {
+            const port = window.location.port;
+            const devPorts = ['3000', '3001', '3002', '5173', '8080'];
+            if (devPorts.includes(port)) {
+                return window.location.origin.replace(':' + port, ':8001');
+            }
+            return window.location.origin;
+        })();
         const $ = id => document.getElementById(id);
         const show = el => el.classList.remove('hidden');
         const hide = el => el.classList.add('hidden');
