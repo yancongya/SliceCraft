@@ -9,14 +9,12 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 模型目录（挂载卷，不打包进镜像）
-RUN mkdir -p /app/backend/app/upscalers/weights /root/.u2net
-
-# 模型目录（挂载卷，不打包进镜像）
-RUN mkdir -p /app/backend/app/upscalers/weights /root/.u2net
-
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
+COPY download_models.sh .
+
+# 下载模型（ONNX / Real-ESRGAN / rembg）
+RUN bash download_models.sh
 
 RUN mkdir -p /app/data
 
