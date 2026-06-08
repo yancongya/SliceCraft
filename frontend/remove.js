@@ -632,6 +632,10 @@
                     result: null
                 }));
                 renderUpscaleElements();
+                // 自动显示第一个元素到画布
+                const first = state.upscaleItems[0];
+                if (first) showUpscaleCanvas(first.src, first);
+                $('upscaleBtn').disabled = false;
                 document.querySelector('.tab[data-panel="upscale"]').click();
             } else if (target === 'recognize') {
                 syncElementsToTarget(state.recognizeItems, sel, (el) => ({
