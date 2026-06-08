@@ -105,8 +105,8 @@ input, select { font-family: inherit; font-size: inherit; }
 }
 .tab:hover { color: var(--text-0); background: var(--surface-2); }
 .tab.active {
-  color: var(--text-0);
-  background: var(--surface-1);
+  color: var(--accent);
+  background: var(--accent-subtle);
   box-shadow: var(--shadow-sm);
 }
 
@@ -162,7 +162,12 @@ input, select { font-family: inherit; font-size: inherit; }
 
 .main { flex: 1; overflow: hidden; }
 .panel { display: none; height: 100%; }
-.panel.active { display: flex; }
+.panel.active { display: flex; animation: panelIn 0.25s ease-out; }
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* ============ Panel Layout ============ */
 .layout { display: flex; flex: 1; overflow: hidden; position: relative; }
@@ -652,6 +657,7 @@ input, select { font-family: inherit; font-size: inherit; }
 .btn:active:not(:disabled) { transform: scale(0.97); }
 
 .btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:not(:disabled) { box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 30%, transparent); }
 .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 .btn-primary:disabled { background: var(--surface-3); color: var(--text-2); cursor: not-allowed; }
 
@@ -848,15 +854,15 @@ input, select { font-family: inherit; font-size: inherit; }
 .progress {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 10px;
+  padding: 12px 0;
 }
 
 .progress-bar {
   flex: 1;
-  height: 4px;
+  height: 6px;
   background: var(--border);
-  border-radius: 2px;
+  border-radius: 3px;
   overflow: hidden;
   position: relative;
 }
@@ -865,22 +871,24 @@ input, select { font-family: inherit; font-size: inherit; }
   content: '';
   position: absolute;
   top: 0;
-  left: -30%;
-  width: 30%;
+  left: -40%;
+  width: 40%;
   height: 100%;
-  background: var(--accent);
-  animation: progress-slide 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: progress-slide 1.2s ease-in-out infinite;
+  border-radius: 3px;
 }
 
 @keyframes progress-slide {
-  0% { left: -30%; }
+  0% { left: -40%; }
   100% { left: 100%; }
 }
 
 .progress span {
-  font-size: 11px;
-  color: var(--text-2);
+  font-size: 12px;
+  color: var(--text-1);
   white-space: nowrap;
+  font-weight: 500;
 }
 
 /* ============ Send Dropdown ============ */
