@@ -92,7 +92,7 @@ function renderRecognizeElements() {
         
         div.innerHTML = '<img src="' + el.src + '"><span class="num">' + el.index + '</span>' + labelHtml + '<button class="card-delete" title="删除">×</button>';
         
-        // 点击：单选（和 split/remove 统一）
+        // 点击：单选 + 预览
         div.addEventListener('click', e => {
             if (e.target.classList.contains('card-delete')) return;
             if (e.shiftKey) {
@@ -100,6 +100,19 @@ function renderRecognizeElements() {
             } else {
                 state.recognizeItems.forEach(x => x.selected = false);
                 el.selected = true;
+            }
+            const preview = $('recognizePreview');
+            const empty = $('recognizeEmpty');
+            if (preview) {
+                let img = preview.querySelector('img.element-preview');
+                if (!img) {
+                    empty?.classList.add('hidden');
+                    img = document.createElement('img');
+                    img.className = 'element-preview';
+                    img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;display:block;margin:auto;';
+                    preview.appendChild(img);
+                }
+                img.src = el.src;
             }
             renderRecognizeElements();
         });
@@ -119,6 +132,18 @@ function renderRecognizeElements() {
         
         list.appendChild(div);
     });
+
+    $('recognizeBtn').disabled = !has;
+
+    if (!has) {
+        const preview = $('recognizePreview');
+        if (preview) {
+            const img = preview.querySelector('img.element-preview');
+            if (img) img.remove();
+            const empty = $('recognizeEmpty');
+            if (empty) empty.classList.remove('hidden');
+        }
+    }
 
     updateBadges();
     updateElementsLayout();

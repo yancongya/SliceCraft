@@ -36,6 +36,8 @@ def _model_config():
             'mean': np.array([0.5, 0.5, 0.5]),
             'std': np.array([0.5, 0.5, 0.5]),
             'embed_dim': 768,
+            'logit_scale': 117.3308,
+            'logit_bias': -12.9324,
             'features_path': os.path.join(FEATURES_DIR, 'siglip_text_features.npy'),
             'labels_path': os.path.join(FEATURES_DIR, 'siglip_labels.txt'),
         }
@@ -113,13 +115,19 @@ def recognize(image: np.ndarray, labels: list = None, top_k: int = 3) -> list:
     image_features = image_features / np.linalg.norm(image_features, axis=1, keepdims=True)
 
     similarities = np.dot(image_features, text_features.T)[0]
-    probs = np.exp(similarities) / np.sum(np.exp(similarities))
-    top_indices = np.argsort(probs)[-top_k:][::-1]
+    cfg = _model_config()
+    if cfg['kind'] == 'siglip':
+        logits = cfg['logit_scale'] * similarities + cfg['logit_bias']
+        scores = 1.0 / (1.0 + np.exp(-logits))
+        top_indices = np.argsort(logits)[-top_k:][::-1]
+    else:
+        scores = np.exp(similarities) / np.sum(np.exp(similarities))
+        top_indices = np.argsort(scores)[-top_k:][::-1]
 
     return [
         {
             "label": active_labels[idx],
-            "confidence": round(float(probs[idx]), 4),
+            "confidence": round(float(scores[idx]), 4),
             "index": int(idx),
         }
         for idx in top_indices
@@ -142,5 +150,5 @@ def get_model_info() -> dict:
         "name": cfg['kind'],
         "embed_dim": cfg['embed_dim'],
         "features_path": os.path.basename(cfg['features_path']),
-        "labels_count": len(_load_precomputed_features()[1]) if _text_features is not None else 0,
+        "labels_count": len(_load_precomputed_features()[1]),
     }

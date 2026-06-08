@@ -708,6 +708,71 @@
         initMarquee('upscaleList', 'upscaleItems');
         initMarquee('recognizeList', 'recognizeItems');
         
+        // ============ 元素卡片框选（在列表容器内拖拽） ============
+        function initElementsMarquee(containerId, elementsKey) {
+            const container = $(containerId);
+            if (!container) return;
+            
+            let active = false, startX, startY, altKey = false;
+            let marquee = null;
+            
+            container.addEventListener('mousedown', e => {
+                if (e.target.closest('.elem-card')) return;
+                e.preventDefault();
+                active = true;
+                altKey = e.altKey;
+                startX = e.clientX + container.scrollLeft - container.getBoundingClientRect().left;
+                startY = e.clientY + container.scrollTop - container.getBoundingClientRect().top;
+                marquee = document.createElement('div');
+                marquee.className = 'marquee';
+                marquee.style.cssText = 'display:block;position:absolute;left:' + startX + 'px;top:' + startY + 'px;width:0;height:0;pointer-events:none;';
+                container.appendChild(marquee);
+            });
+            container.addEventListener('mousemove', e => {
+                if (!active || !marquee) return;
+                e.preventDefault();
+                const currentX = e.clientX + container.scrollLeft - container.getBoundingClientRect().left;
+                const currentY = e.clientY + container.scrollTop - container.getBoundingClientRect().top;
+                const x = Math.min(startX, currentX);
+                const y = Math.min(startY, currentY);
+                const w = Math.abs(currentX - startX);
+                const h = Math.abs(currentY - startY);
+                marquee.style.left = x + 'px';
+                marquee.style.top = y + 'px';
+                marquee.style.width = w + 'px';
+                marquee.style.height = h + 'px';
+            });
+            container.addEventListener('mouseup', e => {
+                if (!active || !marquee) return;
+                active = false;
+                const box = marquee.getBoundingClientRect();
+                marquee.remove();
+                marquee = null;
+                if (box.width < 5 || box.height < 5) return;
+                let count = 0;
+                container.querySelectorAll('.elem-card').forEach(card => {
+                    const cardRect = card.getBoundingClientRect();
+                    if (!(box.right < cardRect.left || box.left > cardRect.right || box.bottom < cardRect.top || box.top > cardRect.bottom)) {
+                        const idx = parseInt(card.dataset.index);
+                        const el = state[elementsKey].find(e => e.index === idx);
+                        if (el) {
+                            el.selected = altKey ? false : true;
+                            card.classList.toggle('selected', el.selected);
+                            count++;
+                        }
+                    }
+                });
+                if (count > 0) { updateBadges(); }
+            });
+            container.addEventListener('mouseleave', () => {
+                if (active && marquee) { active = false; marquee.remove(); marquee = null; }
+            });
+        }
+        initElementsMarquee('splitList', 'splitElements');
+        initElementsMarquee('removeList', 'removeElements');
+        initElementsMarquee('upscaleList', 'upscaleItems');
+        initElementsMarquee('recognizeList', 'recognizeItems');
+        
         // ============ 元素详情（header 中显示） ============
         function updateElementDetail(tab, elements) {
             const detail = $(tab + 'Detail');
