@@ -411,6 +411,24 @@
         $('selectRemAll').addEventListener('click', () => { state.removeElements.forEach(e => e.selected = true); renderRemoveElements(); });
         $('deselectRemAll').addEventListener('click', () => { state.removeElements.forEach(e => e.selected = false); renderRemoveElements(); });
         
+        // 从切分面板获取
+        $('getFromSplitForRemove')?.addEventListener('click', () => {
+            const selected = state.splitElements.filter(e => e.selected);
+            if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
+
+            syncElementsToTarget(state.removeElements, selected, (el) => ({
+                index: 0,
+                preview: el.preview,
+                selected: true,
+                processed: false,
+                result: null,
+                name: el.name || ('element_' + el.index)
+            }));
+
+            renderRemoveElements();
+            showToast('已同步 ' + selected.length + ' 个元素');
+        });
+        
         // 添加按钮 - 追加新图片
         $('removeReupload').addEventListener('click', () => {
             $('elemInput').click();
