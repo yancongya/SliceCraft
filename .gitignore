@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 .DS_Store
 *.tar.gz
+backend/app/upscalers/weights/
