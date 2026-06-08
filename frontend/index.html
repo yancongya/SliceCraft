@@ -37,6 +37,10 @@
                 <span id="cacheSize">0 MB</span>
                 <span id="cacheCount">0 张</span>
             </div>
+            <button class="theme-toggle" id="themeToggle" title="切换主题">
+                <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
             <div class="version">v1.0</div>
         </header>
         
@@ -315,7 +319,7 @@
                             <button class="btn-outline" id="getFromSplitForRemove">从切分面板获取</button>
                         </div>
                         <div class="actions">
-                            <button class="btn btn-primary" id="processBtn" disabled
+                            <button class="btn btn-primary" id="processBtn" disabled>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                                 开始抠图
                             </button>
@@ -554,7 +558,7 @@
         
         <footer class="statusbar">
             <div class="status-left"><span class="dot" id="dot"></span><span id="statusText">就绪</span></div>
-            <span id="statusHint">点击预览 · 框选：拖拽元素条空白区域 · 减选：Alt+拖拽 · 套索：L键</span>
+            <span id="statusHint">点击预览 · 框选：拖拽元素条空白区域 · 减选：Shift+拖拽 · 套索：L键</span>
         </footer>
     </div>
     

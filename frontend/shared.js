@@ -16,6 +16,18 @@
             }
         });
         
+        // 读取 CSS 变量（Canvas 不支持 CSS var()）
+        function accentColor() {
+            return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2563eb';
+        }
+        function accentAlpha(a) {
+            const c = accentColor();
+            const r = parseInt(c.slice(1,3), 16);
+            const g = parseInt(c.slice(3,5), 16);
+            const b = parseInt(c.slice(5,7), 16);
+            return `rgba(${r},${g},${b},${a})`;
+        }
+        
         const state = {
             splitImageId: null,
             splitElements: [],
@@ -126,7 +138,7 @@
             for (let i = 1; i < lassoPoints.length; i++) {
                 lassoCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
             }
-            lassoCtx.strokeStyle = 'var(--accent)';
+            lassoCtx.strokeStyle = accentColor();
             lassoCtx.lineWidth = 2;
             lassoCtx.setLineDash([5, 5]);
             lassoCtx.stroke();
@@ -147,9 +159,9 @@
                 lassoCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
             }
             lassoCtx.closePath();
-            lassoCtx.fillStyle = 'rgba(37, 99, 235, 0.2)';
+            lassoCtx.fillStyle = accentAlpha(0.2);
             lassoCtx.fill();
-            lassoCtx.strokeStyle = 'var(--accent)';
+            lassoCtx.strokeStyle = accentColor();
             lassoCtx.lineWidth = 2;
             lassoCtx.stroke();
             
@@ -790,10 +802,54 @@
             }
         });
         
-        // 定期更新缓存信息
-        setInterval(updateCacheInfo, 5000);
-        // 初始加载
+        // 定期更新缓存信息（页面可见时）
+        let cacheInterval;
+        function startCachePolling() {
+            if (cacheInterval) clearInterval(cacheInterval);
+            cacheInterval = setInterval(() => {
+                if (!document.hidden) updateCacheInfo();
+            }, 5000);
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(cacheInterval);
+                cacheInterval = null;
+            } else {
+                updateCacheInfo();
+                startCachePolling();
+            }
+        });
         updateCacheInfo();
+        startCachePolling();
+        
+        // ============ Theme ============
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+            updateThemeIcon(theme);
+        }
+        
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateThemeIcon(next);
+        }
+        
+        function updateThemeIcon(theme) {
+            document.querySelectorAll('.theme-icon-sun, .theme-icon-moon').forEach(el => {
+                el.style.display = 'none';
+            });
+            const icon = theme === 'dark' ? '.theme-icon-moon' : '.theme-icon-sun';
+            document.querySelector(icon).style.display = 'block';
+        }
+        
+        initTheme();
+        const themeBtn = $('themeToggle');
+        if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
         
         // ============ Toast ============
         function showToast(msg, type = '') {
