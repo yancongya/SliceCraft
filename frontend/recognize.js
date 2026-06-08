@@ -2,7 +2,7 @@
 
 // 识别状态
 const recognizeState = {
-    model: 'mobilenet',
+    model: 'clip',
     customLabels: '',
     results: []
 };
@@ -132,7 +132,6 @@ $('recognizeModel')?.addEventListener('change', e => {
     const desc = $('recognizeModelDesc');
     if (desc) {
         const descriptions = {
-            'mobilenet': 'ImageNet 1000 类，速度快，适合常见物体',
             'clip': '零样本分类，可自定义标签，更灵活'
         };
         desc.textContent = descriptions[recognizeState.model] || '';
