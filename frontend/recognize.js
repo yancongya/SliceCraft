@@ -12,9 +12,8 @@ $('getFromSplitForRecognize')?.addEventListener('click', () => {
     const selected = state.splitElements.filter(e => e.selected);
     if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
 
-    // 复制选中的元素到识别列表
-    state.recognizeItems = selected.map(el => ({
-        index: el.index,
+    syncElementsToTarget(state.recognizeItems, selected, (el) => ({
+        index: 0,
         src: el.preview,
         name: el.name || ('element_' + el.index),
         selected: true,
@@ -23,19 +22,18 @@ $('getFromSplitForRecognize')?.addEventListener('click', () => {
         suggestedName: null
     }));
 
-    state.recognizeItems.forEach((el, i) => el.index = i + 1);
     renderRecognizeElements();
     $('recognizeBtn').disabled = false;
     $('applyNamesBtn').disabled = true;
-    showToast(`已获取 ${selected.length} 个元素`);
+    showToast(`已同步 ${selected.length} 个元素`);
 });
 
 $('getFromRemoveForRecognize')?.addEventListener('click', () => {
     const processed = state.removeElements.filter(e => e.processed && e.result);
     if (!processed.length) { showToast('请先在抠图面板处理元素', 'error'); return; }
 
-    state.recognizeItems = processed.map(el => ({
-        index: el.index,
+    syncElementsToTarget(state.recognizeItems, processed, (el) => ({
+        index: 0,
         src: el.result,
         name: el.name || ('element_' + el.index),
         selected: true,
@@ -44,19 +42,18 @@ $('getFromRemoveForRecognize')?.addEventListener('click', () => {
         suggestedName: null
     }));
 
-    state.recognizeItems.forEach((el, i) => el.index = i + 1);
     renderRecognizeElements();
     $('recognizeBtn').disabled = false;
     $('applyNamesBtn').disabled = true;
-    showToast(`已获取 ${processed.length} 个元素`);
+    showToast(`已同步 ${processed.length} 个元素`);
 });
 
 $('getFromUpscaleForRecognize')?.addEventListener('click', () => {
     const processed = state.upscaleItems.filter(e => e.processed && e.result);
     if (!processed.length) { showToast('请先在放大面板处理元素', 'error'); return; }
 
-    state.recognizeItems = processed.map(el => ({
-        index: el.index,
+    syncElementsToTarget(state.recognizeItems, processed, (el) => ({
+        index: 0,
         src: el.result,
         name: el.name || ('element_' + el.index),
         selected: true,
@@ -65,11 +62,10 @@ $('getFromUpscaleForRecognize')?.addEventListener('click', () => {
         suggestedName: null
     }));
 
-    state.recognizeItems.forEach((el, i) => el.index = i + 1);
     renderRecognizeElements();
     $('recognizeBtn').disabled = false;
     $('applyNamesBtn').disabled = true;
-    showToast(`已获取 ${processed.length} 个元素`);
+    showToast(`已同步 ${processed.length} 个元素`);
 });
 
 // ============ 渲染识别元素列表 ============
@@ -274,44 +270,38 @@ initSendDropdown('recognizeSendBtn', 'recognizeSendMenu', (target) => {
     if (!sel.length) { showToast('请先选择元素', 'error'); return; }
     
     if (target === 'split') {
-        sel.forEach(el => {
-            state.splitElements.push({
-                index: state.splitElements.length + 1,
-                preview: el.src,
-                selected: true,
-                name: el.name || ('element_' + el.index),
-                bbox: [0, 0, 0, 0]
-            });
-        });
+        syncElementsToTarget(state.splitElements, sel, (el) => ({
+            index: 0,
+            preview: el.src,
+            selected: true,
+            name: el.name || ('element_' + el.index),
+            bbox: [0, 0, 0, 0]
+        }));
         renderSplitElements();
         document.querySelector('.tab[data-panel="split"]').click();
     } else if (target === 'remove') {
-        sel.forEach(el => {
-            state.removeElements.push({
-                index: state.removeElements.length + 1,
-                preview: el.src,
-                selected: true,
-                processed: false,
-                result: null,
-                name: el.name || ('element_' + el.index)
-            });
-        });
+        syncElementsToTarget(state.removeElements, sel, (el) => ({
+            index: 0,
+            preview: el.src,
+            selected: true,
+            processed: false,
+            result: null,
+            name: el.name || ('element_' + el.index)
+        }));
         renderRemoveElements();
         document.querySelector('.tab[data-panel="remove"]').click();
     } else if (target === 'upscale') {
-        sel.forEach(el => {
-            state.upscaleItems.push({
-                index: state.upscaleItems.length + 1,
-                src: el.src,
-                name: el.name || ('element_' + el.index),
-                selected: true,
-                processed: false,
-                result: null
-            });
-        });
+        syncElementsToTarget(state.upscaleItems, sel, (el) => ({
+            index: 0,
+            src: el.src,
+            name: el.name || ('element_' + el.index),
+            selected: true,
+            processed: false,
+            result: null
+        }));
         renderUpscaleElements();
         document.querySelector('.tab[data-panel="upscale"]').click();
     }
     
-    showToast(`已发送 ${sel.length} 个元素`);
+    showToast(`已同步 ${sel.length} 个元素`);
 });

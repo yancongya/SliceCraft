@@ -206,50 +206,42 @@ $('getFromSplitBtn')?.addEventListener('click', () => {
     const selected = state.splitElements.filter(e => e.selected);
     if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
 
-    selected.forEach(el => {
-        state.upscaleItems.push({
-            index: state.upscaleItems.length + 1,
-            src: el.preview,
-            name: el.name || ('element_' + el.index),
-            selected: true,
-            processed: false,
-            result: null
-        });
-    });
-
-    // 重新编号
-    state.upscaleItems.forEach((el, i) => el.index = i + 1);
+    syncElementsToTarget(state.upscaleItems, selected, (el) => ({
+        index: 0,
+        src: el.preview,
+        name: el.name || ('element_' + el.index),
+        selected: true,
+        processed: false,
+        result: null
+    }));
 
     renderUpscaleElements();
     const last = state.upscaleItems[state.upscaleItems.length - 1];
-    showUpscaleCanvas(last.src, last);
+    if (last) showUpscaleCanvas(last.src, last);
     $('upscaleBtn').disabled = false;
     $('upscaleExportBtn').disabled = true;
-    showToast(`已获取 ${selected.length} 个切分元素`);
+    showToast(`已同步 ${selected.length} 个切分元素`);
 });
 
 $('getFromRemoveBtn')?.addEventListener('click', () => {
     const processed = state.removeElements.filter(e => e.processed && e.result);
     if (!processed.length) { showToast('请先在抠图面板处理元素', 'error'); return; }
 
-    processed.forEach(el => {
-        state.upscaleItems.push({
-            index: state.upscaleItems.length + 1,
-            src: el.result,
-            name: el.name || ('element_' + el.index),
-            selected: true,
-            processed: false,
-            result: null
-        });
-    });
+    syncElementsToTarget(state.upscaleItems, processed, (el) => ({
+        index: 0,
+        src: el.result,
+        name: el.name || ('element_' + el.index),
+        selected: true,
+        processed: false,
+        result: null
+    }));
 
-    state.upscaleItems.forEach((el, i) => el.index = i + 1);
     renderUpscaleElements();
     const last = state.upscaleItems[state.upscaleItems.length - 1];
-    showUpscaleCanvas(last.src, last);
+    if (last) showUpscaleCanvas(last.src, last);
     $('upscaleBtn').disabled = false;
     $('upscaleExportBtn').disabled = true;
-    showToast(`已获取 ${processed.length} 个抠图结果`);
+    showToast(`已同步 ${processed.length} 个抠图结果`);
 });
 
 // 初始化发送下拉菜单
@@ -260,47 +252,41 @@ initSendDropdown('upscaleSendBtn', 'upscaleSendMenu', (target) => {
     const srcKey = 'result'; // 放大后的结果
     
     if (target === 'split') {
-        sel.forEach(el => {
-            state.splitElements.push({
-                index: state.splitElements.length + 1,
-                preview: el[srcKey] || el.src,
-                selected: true,
-                name: el.name || ('element_' + el.index),
-                bbox: [0, 0, 0, 0]
-            });
-        });
+        syncElementsToTarget(state.splitElements, sel, (el) => ({
+            index: 0,
+            preview: el[srcKey] || el.src,
+            selected: true,
+            name: el.name || ('element_' + el.index),
+            bbox: [0, 0, 0, 0]
+        }));
         renderSplitElements();
         document.querySelector('.tab[data-panel="split"]').click();
     } else if (target === 'remove') {
-        sel.forEach(el => {
-            state.removeElements.push({
-                index: state.removeElements.length + 1,
-                preview: el[srcKey] || el.src,
-                selected: true,
-                processed: false,
-                result: null,
-                name: el.name || ('element_' + el.index)
-            });
-        });
+        syncElementsToTarget(state.removeElements, sel, (el) => ({
+            index: 0,
+            preview: el[srcKey] || el.src,
+            selected: true,
+            processed: false,
+            result: null,
+            name: el.name || ('element_' + el.index)
+        }));
         renderRemoveElements();
         document.querySelector('.tab[data-panel="remove"]').click();
     } else if (target === 'recognize') {
-        sel.forEach(el => {
-            state.recognizeItems.push({
-                index: state.recognizeItems.length + 1,
-                src: el[srcKey] || el.src,
-                name: el.name || ('element_' + el.index),
-                selected: true,
-                label: null,
-                confidence: null,
-                suggestedName: null
-            });
-        });
+        syncElementsToTarget(state.recognizeItems, sel, (el) => ({
+            index: 0,
+            src: el[srcKey] || el.src,
+            name: el.name || ('element_' + el.index),
+            selected: true,
+            label: null,
+            confidence: null,
+            suggestedName: null
+        }));
         renderRecognizeElements();
         document.querySelector('.tab[data-panel="recognize"]').click();
     }
     
-    showToast(`已发送 ${sel.length} 个元素`);
+    showToast(`已同步 ${sel.length} 个元素`);
 });
 
 // 全选/取消

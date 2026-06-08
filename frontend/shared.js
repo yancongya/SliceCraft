@@ -634,6 +634,27 @@
             canvas.style.cursor = hovering ? 'pointer' : 'default';
         });
         
+        // ============ 元素同步工具 ============
+        // 同步元素到目标 tab（按 name 去重，已存在则更新，不存在则追加）
+        function syncElementsToTarget(targetItems, newElements, keyMap) {
+            newElements.forEach(newEl => {
+                const name = newEl.name || ('element_' + newEl.index);
+                const existingIdx = targetItems.findIndex(el => el.name === name);
+                
+                if (existingIdx >= 0) {
+                    // 已存在，更新数据
+                    Object.assign(targetItems[existingIdx], keyMap(newEl));
+                } else {
+                    // 不存在，追加
+                    targetItems.push(keyMap(newEl));
+                }
+            });
+            
+            // 重新编号
+            targetItems.forEach((el, i) => el.index = i + 1);
+        }
+        window.syncElementsToTarget = syncElementsToTarget;
+        
         // ============ 发送下拉菜单 ============
         function initSendDropdown(btnId, menuId, sendFn) {
             const btn = $(btnId);
