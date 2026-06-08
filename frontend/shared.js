@@ -292,10 +292,14 @@
             });
         }
         
-        // 使用 ResizeObserver 监听容器大小变化
+        // 使用 ResizeObserver 监听容器大小变化（带防抖）
+        let resizeTimer = null;
         const resizeObserver = new ResizeObserver(() => {
-            updateElementsLayout();
-            drawOverlay();
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                updateElementsLayout();
+                drawOverlay();
+            }, 100);
         });
         
         // ============ 拖拽调节 ============
@@ -387,14 +391,12 @@
             preview.addEventListener('mousedown', e => {
                 mouseDownTarget = e.target;
                 mouseDownTime = Date.now();
-                console.log('mousedown on', previewId, 'target:', e.target.className, 'shift:', e.shiftKey);
                 
                 // 忽略按钮点击
                 if (e.target.closest('button')) return;
                 
                 // 如果点击在元素卡片上，不启动框选
                 if (e.target.closest('.elem-card')) {
-                    console.log('clicked on elem-card, skip marquee');
                     return;
                 }
                 
