@@ -851,6 +851,31 @@
         const themeBtn = $('themeToggle');
         if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
         
+        // ============ Sidebar Collapse ============
+        document.querySelectorAll('.layout').forEach(layout => {
+            const btn = document.createElement('button');
+            btn.className = 'sidebar-toggle';
+            btn.setAttribute('title', '折叠侧栏');
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>';
+            const sidebar = layout.querySelector('.sidebar');
+            if (!sidebar) return;
+            
+            function posBtn() {
+                btn.style.right = layout.classList.contains('sidebar-collapsed') ? '0' : sidebar.offsetWidth + 'px';
+            }
+            
+            btn.addEventListener('click', () => {
+                layout.classList.toggle('sidebar-collapsed');
+                posBtn();
+            });
+            
+            const ro = new ResizeObserver(posBtn);
+            ro.observe(sidebar);
+            
+            posBtn();
+            layout.appendChild(btn);
+        });
+        
         // ============ Toast ============
         function showToast(msg, type = '') {
             const c = $('toastContainer');
