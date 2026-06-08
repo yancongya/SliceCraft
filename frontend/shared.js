@@ -8,9 +8,11 @@
         
         // 在预览区域阻止文本选择（不阻止元素卡片的双击）
         document.addEventListener('selectstart', e => {
-            if (e.target.closest('.preview') && !e.target.closest('.elem-card')) {
-                e.preventDefault();
-                return false;
+            if (e.target && typeof e.target.closest === 'function') {
+                if (e.target.closest('.preview') && !e.target.closest('.elem-card')) {
+                    e.preventDefault();
+                    return false;
+                }
             }
         });
         
