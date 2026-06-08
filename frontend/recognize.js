@@ -228,13 +228,16 @@ $('applyNamesBtn')?.addEventListener('click', () => {
     });
 
     renderRecognizeElements();
+
+    syncRecognizeNames();
+
     showToast('已应用识别结果到名称');
 });
 
 // ============ 同步名称到其他 tab ============
-$('syncNamesBtn')?.addEventListener('click', () => {
+function syncRecognizeNames() {
     const items = state.recognizeItems.filter(e => e.name);
-    if (!items.length) { showToast('没有可同步的名称', 'error'); return; }
+    if (!items.length) return;
 
     items.forEach(recEl => {
         const splitEl = state.splitElements.find(el => el.index === recEl.index);
@@ -250,7 +253,13 @@ $('syncNamesBtn')?.addEventListener('click', () => {
     if (typeof renderSplitElements === 'function') renderSplitElements();
     if (typeof renderRemoveElements === 'function') renderRemoveElements();
     if (typeof renderUpscaleElements === 'function') renderUpscaleElements();
+}
 
+$('syncNamesBtn')?.addEventListener('click', () => {
+    const items = state.recognizeItems.filter(e => e.name);
+    if (!items.length) { showToast('没有可同步的名称', 'error'); return; }
+
+    syncRecognizeNames();
     showToast('已同步名称到切分、抠图、放大面板');
 });
 
