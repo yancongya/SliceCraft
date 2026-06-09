@@ -7,24 +7,28 @@ pub fn run() {
             let resource_dir = app.path().resource_dir()
                 .unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-            let backend_dir = if cfg!(debug_assertions) {
-                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                    .parent().unwrap().to_path_buf()
+            let (backend_root, script_rel) = if cfg!(debug_assertions) {
+                // 开发模式：项目根目录，脚本在 backend/app/main.py
+                let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .parent().unwrap().to_path_buf();
+                (root, std::path::PathBuf::from("backend").join("app").join("main.py"))
             } else {
-                resource_dir.join("backend")
+                let up_dir = resource_dir.join("_up_").join("backend");
+                let base = if up_dir.exists() { up_dir } else { resource_dir.join("backend") };
+                (base, std::path::PathBuf::from("app").join("main.py"))
             };
 
-            let backend_script = backend_dir.join("backend").join("app").join("main.py");
+            let backend_script = backend_root.join(&script_rel);
 
             // 使用 shell 插件启动 Python 进程
             // 开发模式: python3 backend/app/main.py
             // 生产模式: python3 <resource>/backend/app/main.py
-            let backend_dir_clone = backend_dir.clone();
+            let backend_root2 = backend_root.clone();
             std::thread::spawn(move || {
                 let status = std::process::Command::new("python3")
                     .arg(&backend_script)
-                    .env("PYTHONPATH", &backend_dir_clone)
-                    .current_dir(&backend_dir_clone)
+                    .env("PYTHONPATH", &backend_root2)
+                    .current_dir(&backend_root2)
                     .spawn();
 
                 match status {

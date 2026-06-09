@@ -1,7 +1,7 @@
 {
   "productName": "SliceCraft",
   "version": "0.1.0",
-  "identifier": "com.slicecraft.app",
+  "identifier": "com.slicecraft.desktop",
   "build": {
     "frontendDist": "../frontend",
     "devUrl": "http://localhost:3000",
@@ -20,6 +20,7 @@
         "fullscreen": false
       }
     ],
+    "withGlobalTauri": true,
     "security": {
       "csp": null
     }
