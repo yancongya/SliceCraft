@@ -2,13 +2,13 @@
 
 // 识别状态
 const recognizeState = {
-    customLabels: '',
-    results: []
+    model: 'mobilenet',
+    customLabels: ''
 };
 
 // state.recognizeItems 在 shared.js 中初始化
 
-// ============ 获取内容（和其他 tab 统一模式） ============
+// ============ 获取内容 ============
 $('getFromSplitForRecognize')?.addEventListener('click', () => {
     const selected = state.splitElements.filter(e => e.selected);
     if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
@@ -19,14 +19,12 @@ $('getFromSplitForRecognize')?.addEventListener('click', () => {
         name: el.name || ('element_' + el.index),
         selected: true,
         label: null,
-        confidence: null,
-        suggestedName: null
+        confidence: null
     }));
 
     renderRecognizeElements();
     $('recognizeBtn').disabled = false;
-    $('applyNamesBtn').disabled = true;
-    showToast(`已同步 ${selected.length} 个元素`);
+    showToast('已同步 ' + selected.length + ' 个元素');
 });
 
 $('getFromRemoveForRecognize')?.addEventListener('click', () => {
@@ -39,14 +37,12 @@ $('getFromRemoveForRecognize')?.addEventListener('click', () => {
         name: el.name || ('element_' + el.index),
         selected: true,
         label: null,
-        confidence: null,
-        suggestedName: null
+        confidence: null
     }));
 
     renderRecognizeElements();
     $('recognizeBtn').disabled = false;
-    $('applyNamesBtn').disabled = true;
-    showToast(`已同步 ${processed.length} 个元素`);
+    showToast('已同步 ' + processed.length + ' 个元素');
 });
 
 $('getFromUpscaleForRecognize')?.addEventListener('click', () => {
@@ -59,25 +55,23 @@ $('getFromUpscaleForRecognize')?.addEventListener('click', () => {
         name: el.name || ('element_' + el.index),
         selected: true,
         label: null,
-        confidence: null,
-        suggestedName: null
+        confidence: null
     }));
 
     renderRecognizeElements();
     $('recognizeBtn').disabled = false;
-    $('applyNamesBtn').disabled = true;
-    showToast(`已同步 ${processed.length} 个元素`);
+    showToast('已同步 ' + processed.length + ' 个元素');
 });
 
-// ============ 渲染卡片（和 splitElements/removeElements 完全一致的模式） ============
+// ============ 渲染卡片（多行网格布局） ============
 function renderRecognizeElements() {
     const has = state.recognizeItems.length > 0;
-    $('recognizeBar').classList.toggle('hidden', !has);
     $('recognizeCount').textContent = state.recognizeItems.length + ' 个';
 
     const list = $('recognizeList');
     if (!list) return;
     list.innerHTML = '';
+    list.className = 'elements-container multi-row';
 
     state.recognizeItems.forEach((el, i) => {
         const div = document.createElement('div');
@@ -87,12 +81,13 @@ function renderRecognizeElements() {
         // 标签显示
         let labelHtml = '';
         if (el.label) {
-            labelHtml = '<span style="position:absolute;bottom:2px;left:2px;right:2px;font-size:9px;background:rgba(0,0,0,0.7);color:#fff;padding:1px 3px;border-radius:2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + el.label + '</span>';
+            const conf = el.confidence ? ' (' + Math.round(el.confidence * 100) + '%)' : '';
+            labelHtml = '<span style="position:absolute;bottom:0;left:0;right:0;font-size:10px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + el.label + conf + '</span>';
         }
         
         div.innerHTML = '<img src="' + el.src + '"><span class="num">' + el.index + '</span>' + labelHtml + '<button class="card-delete" title="删除">×</button>';
         
-        // 点击：单选 + 预览
+        // 点击：单选
         div.addEventListener('click', e => {
             if (e.target.classList.contains('card-delete')) return;
             if (e.shiftKey) {
@@ -100,19 +95,6 @@ function renderRecognizeElements() {
             } else {
                 state.recognizeItems.forEach(x => x.selected = false);
                 el.selected = true;
-            }
-            const preview = $('recognizePreview');
-            const empty = $('recognizeEmpty');
-            if (preview) {
-                let img = preview.querySelector('img.element-preview');
-                if (!img) {
-                    empty?.classList.add('hidden');
-                    img = document.createElement('img');
-                    img.className = 'element-preview';
-                    img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;display:block;margin:auto;';
-                    preview.appendChild(img);
-                }
-                img.src = el.src;
             }
             renderRecognizeElements();
         });
@@ -133,25 +115,23 @@ function renderRecognizeElements() {
         list.appendChild(div);
     });
 
-    $('recognizeBtn').disabled = !has;
-
-    if (!has) {
-        const preview = $('recognizePreview');
-        if (preview) {
-            const img = preview.querySelector('img.element-preview');
-            if (img) img.remove();
-            const empty = $('recognizeEmpty');
-            if (empty) empty.classList.remove('hidden');
-        }
-    }
-
     updateBadges();
-    updateElementsLayout();
     updateElementDetail('recognize', state.recognizeItems);
 }
 
 // ============ 模型选择 ============
-// 仅使用 CLIP/SigLIP 零样本模型，无需模型选择器
+$('recognizeModel')?.addEventListener('change', e => {
+    recognizeState.model = e.target.value;
+    const desc = $('recognizeModelDesc');
+    if (desc) {
+        const descriptions = {
+            'mobilenet': 'ImageNet 1000 类，速度快，适合常见物体',
+            'clip': '零样本分类，可自定义标签，更灵活'
+        };
+        desc.textContent = descriptions[recognizeState.model] || '';
+    }
+    $('customLabelsSection').classList.toggle('hidden', recognizeState.model !== 'clip');
+});
 
 // ============ 开始识别 ============
 $('recognizeBtn')?.addEventListener('click', async () => {
@@ -162,7 +142,8 @@ $('recognizeBtn')?.addEventListener('click', async () => {
     $('recognizeProgress').style.display = 'flex';
     setStatus('识别中...', true);
 
-    const labels = $('customLabelsInput')?.value;
+    const model = recognizeState.model;
+    const labels = model === 'clip' ? $('customLabelsInput')?.value : null;
 
     let successCount = 0;
     const total = selected.length;
@@ -185,67 +166,53 @@ $('recognizeBtn')?.addEventListener('click', async () => {
             recognizeFd.append('top_k', '1');
             if (labels) recognizeFd.append('labels', labels);
 
-            const res = await fetch(API + '/api/recognize/clip', { method: 'POST', body: recognizeFd });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || '识别失败');
-            }
+            const res = await fetch(API + '/api/recognize/' + model, { method: 'POST', body: recognizeFd });
+            if (!res.ok) throw new Error('识别失败');
 
             const data = await res.json();
             el.label = data.best_label;
             el.confidence = data.best_confidence;
-            el.suggestedName = data.best_label || el.name;
+            el.name = data.best_label || el.name;
             successCount++;
-
         } catch (err) {
-            console.error('元素识别失败:', err);
+            console.error('识别失败:', err);
         }
     }
 
     renderRecognizeElements();
-
-    $('applyNamesBtn').disabled = false;
     $('recognizeBtn').disabled = false;
+    $('applyNamesBtn').disabled = false;
     $('recognizeProgress').style.display = 'none';
-
     setStatus('识别完成: ' + successCount + '/' + total);
     showToast('识别完成 ' + successCount + '/' + total + ' 个');
 });
 
-// ============ 应用识别结果到名称 ============
+// ============ 应用名称（带编号去重） ============
 $('applyNamesBtn')?.addEventListener('click', () => {
     const items = state.recognizeItems.filter(e => e.label);
     if (!items.length) { showToast('没有识别结果', 'error'); return; }
 
     const labelCounts = {};
     items.forEach(el => {
-        if (!labelCounts[el.label]) {
-            labelCounts[el.label] = 0;
-        }
+        if (!labelCounts[el.label]) labelCounts[el.label] = 0;
         labelCounts[el.label]++;
-        const num = String(labelCounts[el.label]).padStart(2, '0');
-        el.name = el.label + '_' + num;
+        el.name = el.label + '_' + String(labelCounts[el.label]).padStart(2, '0');
     });
 
     renderRecognizeElements();
-
-    syncRecognizeNames();
-
-    showToast('已应用识别结果到名称');
+    showToast('已应用名称');
 });
 
 // ============ 同步名称到其他 tab ============
-function syncRecognizeNames() {
+$('syncNamesBtn')?.addEventListener('click', () => {
     const items = state.recognizeItems.filter(e => e.name);
-    if (!items.length) return;
+    if (!items.length) { showToast('没有可同步的名称', 'error'); return; }
 
     items.forEach(recEl => {
         const splitEl = state.splitElements.find(el => el.index === recEl.index);
         if (splitEl) splitEl.name = recEl.name;
-        
         const removeEl = state.removeElements.find(el => el.index === recEl.index);
         if (removeEl) removeEl.name = recEl.name;
-        
         const upscaleEl = state.upscaleItems.find(el => el.index === recEl.index);
         if (upscaleEl) upscaleEl.name = recEl.name;
     });
@@ -253,14 +220,8 @@ function syncRecognizeNames() {
     if (typeof renderSplitElements === 'function') renderSplitElements();
     if (typeof renderRemoveElements === 'function') renderRemoveElements();
     if (typeof renderUpscaleElements === 'function') renderUpscaleElements();
-}
 
-$('syncNamesBtn')?.addEventListener('click', () => {
-    const items = state.recognizeItems.filter(e => e.name);
-    if (!items.length) { showToast('没有可同步的名称', 'error'); return; }
-
-    syncRecognizeNames();
-    showToast('已同步名称到切分、抠图、放大面板');
+    showToast('已同步名称到其他面板');
 });
 
 // ============ 全选/取消 ============
@@ -271,46 +232,4 @@ $('selectRecognizeAll')?.addEventListener('click', () => {
 $('deselectRecognizeAll')?.addEventListener('click', () => {
     state.recognizeItems.forEach(e => e.selected = false);
     renderRecognizeElements();
-});
-
-// ============ 发送下拉菜单 ============
-initSendDropdown('recognizeSendBtn', 'recognizeSendMenu', (target) => {
-    const sel = state.recognizeItems.filter(e => e.selected);
-    if (!sel.length) { showToast('请先选择元素', 'error'); return; }
-    
-    if (target === 'split') {
-        syncElementsToTarget(state.splitElements, sel, (el) => ({
-            index: 0,
-            preview: el.src,
-            selected: true,
-            name: el.name || ('element_' + el.index),
-            bbox: [0, 0, 0, 0]
-        }));
-        renderSplitElements();
-        document.querySelector('.tab[data-panel="split"]').click();
-    } else if (target === 'remove') {
-        syncElementsToTarget(state.removeElements, sel, (el) => ({
-            index: 0,
-            preview: el.src,
-            selected: true,
-            processed: false,
-            result: null,
-            name: el.name || ('element_' + el.index)
-        }));
-        renderRemoveElements();
-        document.querySelector('.tab[data-panel="remove"]').click();
-    } else if (target === 'upscale') {
-        syncElementsToTarget(state.upscaleItems, sel, (el) => ({
-            index: 0,
-            src: el.src,
-            name: el.name || ('element_' + el.index),
-            selected: true,
-            processed: false,
-            result: null
-        }));
-        renderUpscaleElements();
-        document.querySelector('.tab[data-panel="upscale"]').click();
-    }
-    
-    showToast('已同步 ' + sel.length + ' 个元素');
 });

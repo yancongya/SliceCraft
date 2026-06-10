@@ -474,14 +474,7 @@
             <div class="panel" id="panel-recognize">
                 <div class="layout">
                     <div class="content">
-                        <div class="preview" id="recognizePreview" onselectstart="return false" style="flex: 6;">
-                            <div class="empty" id="recognizeEmpty">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                                <p>从其他面板获取元素，或直接上传</p>
-                            </div>
-                        </div>
-                        <div class="elements-bar hidden" id="recognizeBar" style="flex: 3;">
-                            <div class="bar-resize"></div>
+                        <div class="elements-bar" id="recognizeBar" style="flex: 1;">
                             <div class="elements-header">
                                 <span class="elements-title">待识别元素</span>
                                 <div class="element-detail hidden" id="recognizeDetail">
@@ -494,7 +487,7 @@
                                     <button class="btn-sm btn-sm-ghost" id="deselectRecognizeAll">取消</button>
                                 </div>
                             </div>
-                            <div class="elements-container single-row" id="recognizeList"></div>
+                            <div class="elements-container multi-row" id="recognizeList"></div>
                         </div>
                     </div>
                     <div class="sidebar">
@@ -509,29 +502,6 @@
                             <button class="btn-outline" id="getFromSplitForRecognize">从切分面板获取</button>
                             <button class="btn-outline" id="getFromRemoveForRecognize" style="margin-top:8px;">从抠图面板获取</button>
                             <button class="btn-outline" id="getFromUpscaleForRecognize" style="margin-top:8px;">从放大面板获取</button>
-                        </div>
-                        <div class="section">
-                            <div class="section-title">发送到</div>
-                            <div class="send-dropdown" style="width:100%;">
-                                <button class="btn-outline" id="recognizeSendBtn" style="width:100%;justify-content:center;">
-                                    选择目标面板
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-                                </button>
-                                <div class="send-dropdown-menu" id="recognizeSendMenu" style="width:100%;">
-                                    <button data-target="split">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                                        切分面板
-                                    </button>
-                                    <button data-target="remove">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                                        抠图面板
-                                    </button>
-                                    <button data-target="upscale">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
-                                        放大面板
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                         <div class="actions">
                             <div class="progress hidden" id="recognizeProgress">
