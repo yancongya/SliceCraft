@@ -395,6 +395,7 @@
                 reader.onload = () => {
                     const idx = state.removeElements.length + 1;
                     state.removeElements.push({ 
+                        id: createElementId('remove'),
                         index: idx, 
                         preview: reader.result, 
                         selected: true, 
@@ -402,6 +403,7 @@
                         result: null,
                         name: 'element_' + idx
                     });
+                    reindexElements(state.removeElements);
                     renderRemoveElements();
                 };
                 reader.readAsDataURL(file);
@@ -422,7 +424,13 @@
                 selected: true,
                 processed: false,
                 result: null,
-                name: el.name || ('element_' + el.index)
+                name: el.name || ('element_' + el.index),
+                sourceElementId: el.sourceElementId || el.id,
+                sourceImageId: el.sourceImageId,
+                sourceImageSize: el.sourceImageSize,
+                bbox: el.bbox,
+                rawPreview: el.rawPreview,
+                type: el.type || null
             }));
 
             renderRemoveElements();
@@ -484,6 +492,7 @@
                 div.querySelector('.card-delete').addEventListener('click', e => {
                     e.stopPropagation();
                     state.removeElements.splice(i, 1);
+                    reindexElements(state.removeElements);
                     renderRemoveElements();
                 });
                 list.appendChild(div);
@@ -528,8 +537,9 @@
             setStatus('吸管抠图中...', true);
             
             try {
-                // 重新上传当前元素
-                const blob = await fetch(cur.preview).then(r => r.blob());
+                // 重新上传当前元素；套索元素用原始 bbox 图取色，结果再回盖套索 mask
+                const uploadSource = processingPreviewForElement(cur);
+                const blob = await fetch(uploadSource).then(r => r.blob());
                 const fd = new FormData(); fd.append('file', blob, 'el.png');
                 const up = await (await fetch(API + '/api/upload', { method: 'POST', body: fd })).json();
                 
@@ -549,7 +559,7 @@
                 
                 if (rd.results?.[0]) {
                     cur.processed = true;
-                    cur.result = rd.results[0].preview;
+                    cur.result = await finalizeRemoveResult(cur, rd.results[0].preview, $('remFloodTol').value);
                     showOnCanvas(cur.result, cur);
                     renderRemoveElements();
                     setStatus('吸管抠图完成');
@@ -558,6 +568,178 @@
                 console.error('吸管抠图失败:', err);
                 setStatus('吸管抠图失败', false, true);
             }
+        }
+
+        async function applyLassoMaskToResult(resultSrc, maskSrc) {
+            const [resultImg, maskImg] = await Promise.all([
+                loadImage(resultSrc),
+                loadImage(maskSrc),
+            ]);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = resultImg.width;
+            canvas.height = resultImg.height;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(resultImg, 0, 0);
+            const resultData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = canvas.width;
+            maskCanvas.height = canvas.height;
+            const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+            maskCtx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
+            const maskData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+            let resultAlphaPixels = 0;
+            let maskAlphaPixels = 0;
+            const pixelCount = resultData.data.length / 4;
+
+            for (let p = 0; p < resultData.data.length; p += 4) {
+                if (resultData.data[p + 3] > 10) resultAlphaPixels++;
+                if (maskData.data[p + 3] > 10) maskAlphaPixels++;
+            }
+
+            const resultCoverage = resultAlphaPixels / pixelCount;
+            const maskCoverage = maskAlphaPixels / pixelCount;
+            if (shouldPreserveLassoRegion(maskCoverage, resultCoverage)) {
+                return null;
+            }
+
+            for (let p = 0; p < resultData.data.length; p += 4) {
+                const maskAlpha = maskData.data[p + 3] / 255;
+                resultData.data[p + 3] = Math.round(resultData.data[p + 3] * maskAlpha);
+            }
+
+            ctx.putImageData(resultData, 0, 0);
+            return canvas.toDataURL('image/png');
+        }
+
+        async function finalizeRemoveResult(element, resultSrc, tolerance) {
+            if (!shouldApplyLassoMask(element)) return resultSrc;
+            return await applyLassoMaskToResult(resultSrc, element.preview)
+                || await removeLassoBackground(element, tolerance);
+        }
+
+        async function removeLassoBackground(element, tolerance) {
+            const [rawImg, maskImg] = await Promise.all([
+                loadImage(processingPreviewForElement(element)),
+                loadImage(element.preview),
+            ]);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = rawImg.width;
+            canvas.height = rawImg.height;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(rawImg, 0, 0);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = canvas.width;
+            maskCanvas.height = canvas.height;
+            const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+            maskCtx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
+            const maskData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+            const total = w * h;
+            const inside = new Uint8Array(total);
+            const bg = new Uint8Array(total);
+            const queue = new Int32Array(total);
+            let head = 0;
+            let tail = 0;
+            const seedColors = [];
+
+            function idx(x, y) { return y * w + x; }
+            function addSeed(x, y) {
+                const i = idx(x, y);
+                if (!inside[i] || bg[i]) return;
+                bg[i] = 1;
+                queue[tail++] = i;
+                const p = i * 4;
+                seedColors.push([data.data[p], data.data[p + 1], data.data[p + 2]]);
+            }
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const i = idx(x, y);
+                    if (maskData.data[i * 4 + 3] > 10) inside[i] = 1;
+                }
+            }
+
+            for (let x = 0; x < w; x++) {
+                addSeed(x, 0);
+                addSeed(x, h - 1);
+            }
+            for (let y = 0; y < h; y++) {
+                addSeed(0, y);
+                addSeed(w - 1, y);
+            }
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    const i = idx(x, y);
+                    if (!inside[i]) continue;
+                    if (!inside[idx(x - 1, y)] || !inside[idx(x + 1, y)] || !inside[idx(x, y - 1)] || !inside[idx(x, y + 1)]) {
+                        addSeed(x, y);
+                    }
+                }
+            }
+
+            if (!seedColors.length) return element.preview;
+
+            const bgColor = seedColors.reduce((acc, color) => {
+                acc[0] += color[0];
+                acc[1] += color[1];
+                acc[2] += color[2];
+                return acc;
+            }, [0, 0, 0]).map(v => v / seedColors.length);
+            const threshold = Math.max(36, Number(tolerance || 30) * 2.2);
+            const thresholdSq = threshold * threshold;
+
+            function closeToBg(i) {
+                const p = i * 4;
+                const dr = data.data[p] - bgColor[0];
+                const dg = data.data[p + 1] - bgColor[1];
+                const db = data.data[p + 2] - bgColor[2];
+                return dr * dr + dg * dg + db * db <= thresholdSq;
+            }
+
+            while (head < tail) {
+                const i = queue[head++];
+                const x = i % w;
+                const y = Math.floor(i / w);
+                const candidates = [];
+                if (x > 0) candidates.push(i - 1);
+                if (x < w - 1) candidates.push(i + 1);
+                if (y > 0) candidates.push(i - w);
+                if (y < h - 1) candidates.push(i + w);
+                for (const n of candidates) {
+                    if (!inside[n] || bg[n] || !closeToBg(n)) continue;
+                    bg[n] = 1;
+                    queue[tail++] = n;
+                }
+            }
+
+            for (let i = 0; i < total; i++) {
+                const p = i * 4;
+                if (!inside[i] || bg[i]) {
+                    data.data[p + 3] = 0;
+                } else {
+                    data.data[p + 3] = Math.round(data.data[p + 3] * (maskData.data[p + 3] / 255));
+                }
+            }
+
+            ctx.putImageData(data, 0, 0);
+            return canvas.toDataURL('image/png');
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
         }
         
         $('processBtn').addEventListener('click', async () => {
@@ -572,9 +754,12 @@
             
             for (let i = 0; i < sel.length; i++) {
                 setStatus('抠图中 (' + (i+1) + '/' + sel.length + ')...', true);
+                
                 try {
-                    const blob = await fetch(sel[i].preview).then(r => r.blob());
-                    const fd = new FormData(); fd.append('file', blob, 'el.png');
+                    const uploadSource = processingPreviewForElement(sel[i]);
+                    const uploadBlob = await fetch(uploadSource).then(r => r.blob());
+                    
+                    const fd = new FormData(); fd.append('file', uploadBlob, 'el.png');
                     const up = await (await fetch(API + '/api/upload', { method: 'POST', body: fd })).json();
                     
                     const df = new FormData();
@@ -588,15 +773,19 @@
                     rf.append('flood_tolerance', tol);
                     const rd = await (await fetch(API + '/api/remove_background', { method: 'POST', body: rf })).json();
                     
-                    if (rd.results?.[0]) { sel[i].processed = true; sel[i].result = rd.results[0].preview; }
+                    if (rd.results?.[0]) {
+                        sel[i].processed = true;
+                        sel[i].result = await finalizeRemoveResult(sel[i], rd.results[0].preview, tol);
+                    }
                 } catch (err) { console.error('元素 ' + sel[i].index + ' 失败:', err); }
             }
             
             renderRemoveElements();
             
-            // 更新画布显示当前元素的抠图结果
-            if (canvasState.currentElement && canvasState.currentElement.processed) {
-                showOnCanvas(canvasState.currentElement.result, canvasState.currentElement);
+            // 更新画布显示第一个已处理的选中元素
+            const firstProcessed = sel.find(e => e.processed);
+            if (firstProcessed) {
+                showOnCanvas(firstProcessed.result, firstProcessed);
             }
             
             setStatus('完成，处理了 ' + sel.length + ' 个元素');
@@ -636,7 +825,12 @@
                     preview: el.processed ? el.result : el.preview,
                     selected: true,
                     name: el.name || ('element_' + el.index),
-                    bbox: [0, 0, 0, 0]
+                    sourceElementId: el.sourceElementId || el.id,
+                    sourceImageId: el.sourceImageId,
+                    sourceImageSize: el.sourceImageSize,
+                    bbox: el.bbox,
+                    rawPreview: el.rawPreview,
+                    type: el.type || null
                 }));
                 renderSplitElements();
                 document.querySelector('.tab[data-panel="split"]').click();
@@ -645,6 +839,11 @@
                     index: 0,
                     src: el.processed ? el.result : el.preview,
                     name: el.name || ('element_' + el.index),
+                    sourceElementId: el.sourceElementId || el.id,
+                    sourceImageId: el.sourceImageId,
+                    sourceImageSize: el.sourceImageSize,
+                    bbox: el.bbox,
+                    rawPreview: el.rawPreview,
                     selected: true,
                     processed: false,
                     result: null
@@ -660,6 +859,11 @@
                     index: 0,
                     src: el.processed ? el.result : el.preview,
                     name: el.name || ('element_' + el.index),
+                    sourceElementId: el.sourceElementId || el.id,
+                    sourceImageId: el.sourceImageId,
+                    sourceImageSize: el.sourceImageSize,
+                    bbox: el.bbox,
+                    rawPreview: el.rawPreview,
                     selected: true,
                     label: null,
                     confidence: null,

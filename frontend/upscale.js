@@ -191,6 +191,7 @@ function renderUpscaleElements() {
         div.querySelector('.card-delete').addEventListener('click', e => {
             e.stopPropagation();
             state.upscaleItems.splice(i, 1);
+            reindexElements(state.upscaleItems);
             renderUpscaleElements();
         });
         list.appendChild(div);
@@ -210,6 +211,11 @@ $('getFromSplitBtn')?.addEventListener('click', () => {
         index: 0,
         src: el.preview,
         name: el.name || ('element_' + el.index),
+        sourceElementId: el.sourceElementId || el.id,
+        sourceImageId: el.sourceImageId,
+        sourceImageSize: el.sourceImageSize,
+        bbox: el.bbox,
+        rawPreview: el.rawPreview,
         selected: true,
         processed: false,
         result: null
@@ -231,6 +237,11 @@ $('getFromRemoveBtn')?.addEventListener('click', () => {
         index: 0,
         src: el.result,
         name: el.name || ('element_' + el.index),
+        sourceElementId: el.sourceElementId || el.id,
+        sourceImageId: el.sourceImageId,
+        sourceImageSize: el.sourceImageSize,
+        bbox: el.bbox,
+        rawPreview: el.rawPreview,
         selected: true,
         processed: false,
         result: null
@@ -257,7 +268,11 @@ initSendDropdown('upscaleSendBtn', 'upscaleSendMenu', (target) => {
             preview: el[srcKey] || el.src,
             selected: true,
             name: el.name || ('element_' + el.index),
-            bbox: [0, 0, 0, 0]
+            sourceElementId: el.sourceElementId || el.id,
+            sourceImageId: el.sourceImageId,
+            sourceImageSize: el.sourceImageSize,
+            bbox: el.bbox,
+            rawPreview: el.rawPreview
         }));
         renderSplitElements();
         document.querySelector('.tab[data-panel="split"]').click();
@@ -268,7 +283,12 @@ initSendDropdown('upscaleSendBtn', 'upscaleSendMenu', (target) => {
             selected: true,
             processed: false,
             result: null,
-            name: el.name || ('element_' + el.index)
+            name: el.name || ('element_' + el.index),
+            sourceElementId: el.sourceElementId || el.id,
+            sourceImageId: el.sourceImageId,
+            sourceImageSize: el.sourceImageSize,
+            bbox: el.bbox,
+            rawPreview: el.rawPreview
         }));
         renderRemoveElements();
         document.querySelector('.tab[data-panel="remove"]').click();
@@ -277,6 +297,11 @@ initSendDropdown('upscaleSendBtn', 'upscaleSendMenu', (target) => {
             index: 0,
             src: el[srcKey] || el.src,
             name: el.name || ('element_' + el.index),
+            sourceElementId: el.sourceElementId || el.id,
+            sourceImageId: el.sourceImageId,
+            sourceImageSize: el.sourceImageSize,
+            bbox: el.bbox,
+            rawPreview: el.rawPreview,
             selected: true,
             label: null,
             confidence: null,

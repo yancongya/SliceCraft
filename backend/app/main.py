@@ -324,17 +324,21 @@ async def lasso_detect(
     x2 = min(img_w, x + w + crop_padding)
     y2 = min(img_h, y + h + crop_padding)
     
-    # 裁切
+    # 裁切：preview 保留套索 alpha 用于切分面板展示，raw_preview 保留原始 bbox 供后续抠图使用
     cropped = img_bgra[y1:y2, x1:x2]
+    raw_cropped = img[y1:y2, x1:x2]
     
     # 编码为 base64
     _, crop_buffer = cv2.imencode('.png', cropped)
     crop_b64 = base64.b64encode(crop_buffer).decode('utf-8')
+    _, raw_crop_buffer = cv2.imencode('.png', raw_cropped)
+    raw_crop_b64 = base64.b64encode(raw_crop_buffer).decode('utf-8')
     
     lasso_element = {
         "index": 0,  # 稍后分配
         "bbox": [x1, y1, x2 - x1, y2 - y1],
         "preview": f"data:image/png;base64,{crop_b64}",
+        "rawPreview": f"data:image/png;base64,{raw_crop_b64}",
         "type": "lasso"
     }
     

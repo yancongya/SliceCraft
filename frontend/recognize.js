@@ -2,7 +2,7 @@
 
 // 识别状态
 const recognizeState = {
-    model: 'mobilenet',
+    model: 'clip',
     customLabels: ''
 };
 
@@ -17,6 +17,11 @@ $('getFromSplitForRecognize')?.addEventListener('click', () => {
         index: 0,
         src: el.preview,
         name: el.name || ('element_' + el.index),
+        sourceElementId: el.sourceElementId || el.id,
+        sourceImageId: el.sourceImageId,
+        sourceImageSize: el.sourceImageSize,
+        bbox: el.bbox,
+        rawPreview: el.rawPreview,
         selected: true,
         label: null,
         confidence: null
@@ -35,6 +40,11 @@ $('getFromRemoveForRecognize')?.addEventListener('click', () => {
         index: 0,
         src: el.result,
         name: el.name || ('element_' + el.index),
+        sourceElementId: el.sourceElementId || el.id,
+        sourceImageId: el.sourceImageId,
+        sourceImageSize: el.sourceImageSize,
+        bbox: el.bbox,
+        rawPreview: el.rawPreview,
         selected: true,
         label: null,
         confidence: null
@@ -53,6 +63,11 @@ $('getFromUpscaleForRecognize')?.addEventListener('click', () => {
         index: 0,
         src: el.result,
         name: el.name || ('element_' + el.index),
+        sourceElementId: el.sourceElementId || el.id,
+        sourceImageId: el.sourceImageId,
+        sourceImageSize: el.sourceImageSize,
+        bbox: el.bbox,
+        rawPreview: el.rawPreview,
         selected: true,
         label: null,
         confidence: null
@@ -71,7 +86,7 @@ function renderRecognizeElements() {
     const list = $('recognizeList');
     if (!list) return;
     list.innerHTML = '';
-    list.className = 'elements-container multi-row';
+    list.className = 'elements-container recognize-grid';
 
     state.recognizeItems.forEach((el, i) => {
         const div = document.createElement('div');
@@ -82,7 +97,7 @@ function renderRecognizeElements() {
         let labelHtml = '';
         if (el.label) {
             const conf = el.confidence ? ' (' + Math.round(el.confidence * 100) + '%)' : '';
-            labelHtml = '<span style="position:absolute;bottom:0;left:0;right:0;font-size:10px;background:rgba(0,0,0,0.7);color:#fff;padding:2px 4px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + el.label + conf + '</span>';
+            labelHtml = '<span class="recognize-label" title="' + el.label + conf + '">' + el.label + conf + '</span>';
         }
         
         div.innerHTML = '<img src="' + el.src + '"><span class="num">' + el.index + '</span>' + labelHtml + '<button class="card-delete" title="删除">×</button>';
@@ -109,6 +124,7 @@ function renderRecognizeElements() {
         div.querySelector('.card-delete').addEventListener('click', e => {
             e.stopPropagation();
             state.recognizeItems.splice(i, 1);
+            reindexElements(state.recognizeItems);
             renderRecognizeElements();
         });
         
@@ -120,17 +136,19 @@ function renderRecognizeElements() {
 }
 
 // ============ 模型选择 ============
-$('recognizeModel')?.addEventListener('change', e => {
-    recognizeState.model = e.target.value;
+function updateRecognizeModelInfo() {
     const desc = $('recognizeModelDesc');
     if (desc) {
-        const descriptions = {
-            'mobilenet': 'ImageNet 1000 类，速度快，适合常见物体',
-            'clip': '零样本分类，可自定义标签，更灵活'
-        };
-        desc.textContent = descriptions[recognizeState.model] || '';
+        desc.textContent = 'SigLIP/CLIP 零样本分类，使用内置标签库，也可输入自定义标签';
     }
-    $('customLabelsSection').classList.toggle('hidden', recognizeState.model !== 'clip');
+    const customLabels = $('customLabelsSection');
+    if (customLabels) customLabels.classList.remove('hidden');
+}
+updateRecognizeModelInfo();
+
+$('recognizeModel')?.addEventListener('change', e => {
+    recognizeState.model = e.target.value;
+    updateRecognizeModelInfo();
 });
 
 // ============ 开始识别 ============
@@ -172,13 +190,14 @@ $('recognizeBtn')?.addEventListener('click', async () => {
             const data = await res.json();
             el.label = data.best_label;
             el.confidence = data.best_confidence;
-            el.name = data.best_label || el.name;
+            if (data.best_label) el.label = data.best_label;
             successCount++;
         } catch (err) {
             console.error('识别失败:', err);
         }
     }
 
+    uniqueNamesFromLabels(selected.filter(e => e.label));
     renderRecognizeElements();
     $('recognizeBtn').disabled = false;
     $('applyNamesBtn').disabled = false;
@@ -192,12 +211,7 @@ $('applyNamesBtn')?.addEventListener('click', () => {
     const items = state.recognizeItems.filter(e => e.label);
     if (!items.length) { showToast('没有识别结果', 'error'); return; }
 
-    const labelCounts = {};
-    items.forEach(el => {
-        if (!labelCounts[el.label]) labelCounts[el.label] = 0;
-        labelCounts[el.label]++;
-        el.name = el.label + '_' + String(labelCounts[el.label]).padStart(2, '0');
-    });
+    uniqueNamesFromLabels(items);
 
     renderRecognizeElements();
     showToast('已应用名称');
@@ -208,14 +222,7 @@ $('syncNamesBtn')?.addEventListener('click', () => {
     const items = state.recognizeItems.filter(e => e.name);
     if (!items.length) { showToast('没有可同步的名称', 'error'); return; }
 
-    items.forEach(recEl => {
-        const splitEl = state.splitElements.find(el => el.index === recEl.index);
-        if (splitEl) splitEl.name = recEl.name;
-        const removeEl = state.removeElements.find(el => el.index === recEl.index);
-        if (removeEl) removeEl.name = recEl.name;
-        const upscaleEl = state.upscaleItems.find(el => el.index === recEl.index);
-        if (upscaleEl) upscaleEl.name = recEl.name;
-    });
+    syncNamesBySource(items, [state.splitElements, state.removeElements, state.upscaleItems]);
 
     if (typeof renderSplitElements === 'function') renderSplitElements();
     if (typeof renderRemoveElements === 'function') renderRemoveElements();

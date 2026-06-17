@@ -41,11 +41,23 @@
         
         const state = {
             splitImageId: null,
+            splitImageSize: null,
+            splitHasManualEdits: false,
             splitElements: [],
             removeElements: [],
             upscaleItems: [],
             recognizeItems: []
         };
+        const {
+            createElementId,
+            reindexElements,
+            syncElementsToTarget,
+            syncNamesBySource,
+            uniqueNamesFromLabels,
+            processingPreviewForElement,
+            shouldApplyLassoMask,
+            shouldPreserveLassoRegion,
+        } = window.ElementModel;
         
         // ============ 工具函数 ============
         function setStatus(text, loading = false, error = false) {
@@ -249,6 +261,10 @@
                 
                 // 添加套索元素
                 const lassoEl = data.lasso_element;
+                lassoEl.id = createElementId('split');
+                lassoEl.sourceElementId = lassoEl.id;
+                lassoEl.sourceImageId = state.splitImageId;
+                lassoEl.sourceImageSize = state.splitImageSize;
                 lassoEl.index = state.splitElements.length + 1;
                 lassoEl.selected = true;
                 state.splitElements.push(lassoEl);
@@ -256,11 +272,18 @@
                 // 添加剩余元素
                 if (data.remaining_elements) {
                     data.remaining_elements.forEach(el => {
+                        el.id = createElementId('split');
+                        el.sourceElementId = el.id;
+                        el.sourceImageId = state.splitImageId;
+                        el.sourceImageSize = state.splitImageSize;
                         el.index = state.splitElements.length + 1;
                         el.selected = true;
                         state.splitElements.push(el);
                     });
                 }
+                
+                reindexElements(state.splitElements);
+                state.splitHasManualEdits = true;
                 
                 renderSplitElements();
                 setStatus(`套索切分完成，共 ${state.splitElements.length} 个元素`);
@@ -274,6 +297,7 @@
             document.querySelectorAll('.elements-bar').forEach(bar => {
                 const container = bar.querySelector('.elements-container');
                 if (!container) return;
+                if (container.id === 'recognizeList') return;
                 const h = bar.offsetHeight;
                 const w = container.offsetWidth;
                 
@@ -660,25 +684,14 @@
         });
         
         // ============ 元素同步工具 ============
-        // 同步元素到目标 tab（按 name 去重，已存在则更新，不存在则追加）
-        function syncElementsToTarget(targetItems, newElements, keyMap) {
-            newElements.forEach(newEl => {
-                const name = newEl.name || ('element_' + newEl.index);
-                const existingIdx = targetItems.findIndex(el => el.name === name);
-                
-                if (existingIdx >= 0) {
-                    // 已存在，更新数据
-                    Object.assign(targetItems[existingIdx], keyMap(newEl));
-                } else {
-                    // 不存在，追加
-                    targetItems.push(keyMap(newEl));
-                }
-            });
-            
-            // 重新编号
-            targetItems.forEach((el, i) => el.index = i + 1);
-        }
         window.syncElementsToTarget = syncElementsToTarget;
+        window.syncNamesBySource = syncNamesBySource;
+        window.uniqueNamesFromLabels = uniqueNamesFromLabels;
+        window.reindexElements = reindexElements;
+        window.createElementId = createElementId;
+        window.processingPreviewForElement = processingPreviewForElement;
+        window.shouldApplyLassoMask = shouldApplyLassoMask;
+        window.shouldPreserveLassoRegion = shouldPreserveLassoRegion;
         
         // ============ 发送下拉菜单 ============
         function initSendDropdown(btnId, menuId, sendFn) {

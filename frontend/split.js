@@ -23,6 +23,7 @@
             state.splitElements = [];
             state.splitImageId = null;
             state.splitImageSize = null;
+            state.splitHasManualEdits = false;
             $('splitImage').classList.add('hidden');
             show($('uploadZone'));
             hide($('splitBar'));
@@ -42,6 +43,7 @@
                 const data = await res.json();
                 state.splitImageId = data.image_id;
                 state.splitImageSize = { w: data.width, h: data.height };
+                state.splitHasManualEdits = false;
                 $('splitImage').src = data.preview;
                 show($('splitImage')); hide($('uploadZone'));
                 $('toolbar').style.display = 'flex';
@@ -82,7 +84,7 @@
                     if (k === 'method') continue;
                     const el = $(k); if (el) { el.value = v; const val = $('v_' + k); if (val) val.textContent = v; }
                 }
-                autoDetect();
+                autoDetect(true);
             });
         });
         
@@ -107,17 +109,29 @@
                 }
             }
             
-            autoDetect();
+            autoDetect(true);
             setStatus('已重置为默认参数');
         });
         
         // 检测
         let detectTimer = null;
-        function autoDetect() { if (!state.splitImageId) return; clearTimeout(detectTimer); detectTimer = setTimeout(runDetection, 300); }
+        function autoDetect(force = false) {
+            if (!state.splitImageId) return;
+            if (state.splitHasManualEdits && !force) {
+                setStatus('已保留人工编辑；使用预设或重置可重新检测');
+                return;
+            }
+            clearTimeout(detectTimer);
+            detectTimer = setTimeout(() => runDetection(force), 300);
+        }
         
         let isDetecting = false;
-        async function runDetection() {
+        async function runDetection(force = false) {
             if (!state.splitImageId || isDetecting) return;
+            if (state.splitHasManualEdits && !force) {
+                setStatus('已保留人工编辑；未自动覆盖检测结果');
+                return;
+            }
             isDetecting = true;
             setStatus('检测中...', true);
             
@@ -154,9 +168,15 @@
                 $('splitImage').src = data.preview;
                 state.splitElements = (data.elements || []).map((el, i) => ({ 
                     ...el, 
+                    id: createElementId('split'),
+                    sourceImageId: state.splitImageId,
+                    sourceImageSize: state.splitImageSize,
                     selected: true, 
                     name: 'element_' + (i + 1)
                 }));
+                state.splitElements.forEach(el => { el.sourceElementId = el.id; });
+                reindexElements(state.splitElements);
+                state.splitHasManualEdits = false;
                 renderSplitElements();
                 setStatus('找到 ' + data.count + ' 个元素');
                 showToast('检测到 ' + data.count + ' 个元素', 'success');
@@ -196,6 +216,8 @@
                 div.querySelector('.card-delete').addEventListener('click', e => {
                     e.stopPropagation();
                     state.splitElements.splice(i, 1);
+                    reindexElements(state.splitElements);
+                    state.splitHasManualEdits = true;
                     renderSplitElements();
                 });
                 list.appendChild(div);
@@ -234,7 +256,8 @@
             let source;
             if (panel === 'remove') {
                 // 抠图 tab 只导出已处理的
-                source = state.removeElements.filter(e => e.processed);
+                const selectedProcessed = state.removeElements.filter(e => e.processed && e.selected);
+                source = selectedProcessed.length ? selectedProcessed : state.removeElements.filter(e => e.processed);
             } else {
                 const selected = state.splitElements.filter(e => e.selected);
                 source = selected.length ? selected : state.splitElements;
@@ -255,7 +278,7 @@
                 for (const el of source) {
                     const a = document.createElement('a');
                     a.href = el[imgKey];
-                    a.download = 'element_' + el.index + '.png';
+                    a.download = (el.name || ('element_' + el.index)) + '.png';
                     a.click();
                     await new Promise(r => setTimeout(r, 200));
                 }
@@ -264,7 +287,7 @@
                 // ZIP
                 showToast('正在打包...', '');
                 const elementsData = source.map(el => ({
-                    name: 'element_' + el.index + '.png',
+                    name: (el.name || ('element_' + el.index)) + '.png',
                     base64: el[imgKey]
                 }));
                 const fd = new FormData();
@@ -285,7 +308,7 @@
                 const useBbox = posMode === 'bbox';
                 
                 const elementsData = source.map(el => ({
-                    name: 'Element ' + el.index,
+                    name: el.name || ('Element ' + el.index),
                     base64: el[imgKey],
                     x: useBbox ? (el.bbox ? el.bbox[0] : 0) : 0,
                     y: useBbox ? (el.bbox ? el.bbox[1] : 0) : 0
@@ -293,10 +316,12 @@
                 
                 // 获取画布尺寸
                 let canvasW, canvasH;
-                if (panel === 'split' && useBbox && state.splitImageSize) {
-                    // 切分 tab 用原图尺寸
-                    canvasW = state.splitImageSize.w;
-                    canvasH = state.splitImageSize.h;
+                const sourceImageSize = source.find(el => el.sourceImageSize)?.sourceImageSize;
+                if (useBbox && (state.splitImageSize || sourceImageSize)) {
+                    // 按位置导出时用原图尺寸，跨面板结果也沿用来源画布
+                    const size = panel === 'split' ? state.splitImageSize : sourceImageSize;
+                    canvasW = size.w;
+                    canvasH = size.h;
                 } else {
                     // 抠图 tab 或左上对齐：用第一张图尺寸
                     const firstImg = new Image();
@@ -333,7 +358,13 @@
                     selected: true,
                     processed: false,
                     result: null,
-                    name: el.name || ('element_' + el.index)
+                    name: el.name || ('element_' + el.index),
+                    sourceElementId: el.sourceElementId || el.id,
+                    sourceImageId: el.sourceImageId,
+                    sourceImageSize: el.sourceImageSize,
+                    bbox: el.bbox,
+                    rawPreview: el.rawPreview,
+                    type: el.type || null
                 }));
                 renderRemoveElements();
                 document.querySelector('.tab[data-panel="remove"]').click();
@@ -342,6 +373,11 @@
                     index: 0,
                     src: el.preview,
                     name: el.name || ('element_' + el.index),
+                    sourceElementId: el.sourceElementId || el.id,
+                    sourceImageId: el.sourceImageId,
+                    sourceImageSize: el.sourceImageSize,
+                    bbox: el.bbox,
+                    rawPreview: el.rawPreview,
                     selected: true,
                     processed: false,
                     result: null
@@ -357,6 +393,11 @@
                     index: 0,
                     src: el.preview,
                     name: el.name || ('element_' + el.index),
+                    sourceElementId: el.sourceElementId || el.id,
+                    sourceImageId: el.sourceImageId,
+                    sourceImageSize: el.sourceImageSize,
+                    bbox: el.bbox,
+                    rawPreview: el.rawPreview,
                     selected: true,
                     label: null,
                     confidence: null,
