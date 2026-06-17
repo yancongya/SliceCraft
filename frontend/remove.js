@@ -11,6 +11,14 @@
             currentImage: null,
             currentElement: null
         };
+
+        function removeInputForElement(element) {
+            const mode = $('removeInputSource')?.value || 'auto';
+            if ((element.split?.type || element.type) === 'lasso') return processingPreviewForElement(element);
+            if (mode === 'split') return getElementImage(element, 'remove-input-split');
+            if (mode === 'upscale') return getElementImage(element, 'remove-input-upscale');
+            return getElementImage(element, 'remove-input');
+        }
         
         // 在画布上显示图片
         function showOnCanvas(src, element = null) {
@@ -55,7 +63,7 @@
         let savedScale = 1, savedOffsetX = 0, savedOffsetY = 0;
         
         function showOriginal() {
-            if (!canvasState.currentElement?.processed || showingOriginal) return;
+            if (!canvasState.currentElement?.remove?.processed || showingOriginal) return;
             showingOriginal = true;
             $('eyeBtn')?.classList.add('active');
             
@@ -77,7 +85,7 @@
                 ctx.drawImage(img, 0, 0);
                 canvas.style.transform = `translate(calc(-50% + ${savedOffsetX}px), calc(-50% + ${savedOffsetY}px)) scale(${savedScale})`;
             };
-            img.src = canvasState.currentElement.preview;
+            img.src = getElementImage(canvasState.currentElement, 'remove-input');
         }
         
         function hideOriginal() {
@@ -98,7 +106,7 @@
                     ctx.drawImage(img, 0, 0);
                     canvas.style.transform = `translate(calc(-50% + ${savedOffsetX}px), calc(-50% + ${savedOffsetY}px)) scale(${savedScale})`;
                 };
-                img.src = canvasState.currentElement.result;
+                img.src = canvasState.currentElement.remove.result;
             }
         }
         $('eyeBtn')?.addEventListener('mousedown', showOriginal);
@@ -162,7 +170,7 @@
                 ctx.drawImage(img, 0, 0);
                 originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             };
-            img.src = canvasState.currentElement.result || canvasState.currentElement.preview;
+            img.src = canvasState.currentElement.remove?.result || getElementImage(canvasState.currentElement, 'remove-input');
         }
         
         function eraseAtPosition(x, y) {
@@ -212,7 +220,8 @@
                 ctx.putImageData(currentData, 0, 0);
             }
             
-            canvasState.currentElement.result = canvas.toDataURL('image/png');
+            canvasState.currentElement.remove.processed = true;
+            canvasState.currentElement.remove.result = canvas.toDataURL('image/png');
         }
         
         // 归位功能
@@ -388,58 +397,17 @@
             isErasingActive = false;
         });
         
-        $('uploadElemBtn').addEventListener('click', () => $('elemInput').click());
-        $('elemInput').addEventListener('change', e => {
-            Array.from(e.target.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const idx = state.removeElements.length + 1;
-                    state.removeElements.push({ 
-                        id: createElementId('remove'),
-                        index: idx, 
-                        preview: reader.result, 
-                        selected: true, 
-                        processed: false, 
-                        result: null,
-                        name: 'element_' + idx
-                    });
-                    reindexElements(state.removeElements);
-                    renderRemoveElements();
-                };
-                reader.readAsDataURL(file);
-            });
+        $('uploadElemBtn')?.addEventListener('click', () => {
+            document.querySelector('.tab[data-panel="split"]')?.click();
+            showToast('请先在切分面板生成元素', 'error');
         });
         
-        $('selectRemAll').addEventListener('click', () => { state.removeElements.forEach(e => e.selected = true); renderRemoveElements(); });
-        $('deselectRemAll').addEventListener('click', () => { state.removeElements.forEach(e => e.selected = false); renderRemoveElements(); });
+        $('selectRemAll').addEventListener('click', () => { selectAll(state.selection, 'remove', state.elements); renderRemoveElements(); });
+        $('deselectRemAll').addEventListener('click', () => { clearSelection(state.selection, 'remove'); renderRemoveElements(); });
         
-        // 从切分面板获取
-        $('getFromSplitForRemove')?.addEventListener('click', () => {
-            const selected = state.splitElements.filter(e => e.selected);
-            if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
-
-            syncElementsToTarget(state.removeElements, selected, (el) => ({
-                index: 0,
-                preview: el.preview,
-                selected: true,
-                processed: false,
-                result: null,
-                name: el.name || ('element_' + el.index),
-                sourceElementId: el.sourceElementId || el.id,
-                sourceImageId: el.sourceImageId,
-                sourceImageSize: el.sourceImageSize,
-                bbox: el.bbox,
-                rawPreview: el.rawPreview,
-                type: el.type || null
-            }));
-
-            renderRemoveElements();
-            showToast('已同步 ' + selected.length + ' 个元素');
-        });
-        
-        // 添加按钮 - 追加新图片
-        $('removeReupload').addEventListener('click', () => {
-            $('elemInput').click();
+        $('removeReupload')?.addEventListener('click', () => {
+            document.querySelector('.tab[data-panel="split"]')?.click();
+            showToast('新增和删除元素请在切分面板完成');
         });
         
         $('removeMethod').addEventListener('change', e => {
@@ -459,41 +427,33 @@
         $('remFloodTol').addEventListener('input', e => $('v_remFloodTol').textContent = e.target.value);
         
         function renderRemoveElements() {
-            const has = state.removeElements.length > 0;
+            const has = state.elements.length > 0;
             $('removeEmpty').classList.toggle('hidden', has);
             $('removeBar').classList.toggle('hidden', !has);
-            $('removeCount').textContent = state.removeElements.length + ' 个';
+            $('removeCount').textContent = state.elements.length + ' 个';
             $('processBtn').disabled = !has;
             
             const list = $('removeList');
             list.innerHTML = '';
             
-            state.removeElements.forEach((el, i) => {
+            state.elements.forEach((el) => {
                 const div = document.createElement('div');
-                div.className = 'elem-card' + (el.selected ? ' selected' : '');
+                div.className = 'elem-card' + (isSelected(state.selection, 'remove', el.id) ? ' selected' : '');
                 div.dataset.index = el.index;
-                const imgSrc = el.processed ? el.result : el.preview;
-                div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
+                div.dataset.id = el.id;
+                const imgSrc = getElementImage(el, 'remove');
+                div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span>';
                 div.addEventListener('click', e => {
-                    if (e.target.classList.contains('card-delete')) return;
                     if (e.shiftKey) {
-                        el.selected = true;
+                        setSelected(state.selection, 'remove', el.id, true);
                     } else {
-                        state.removeElements.forEach(x => x.selected = false);
-                        el.selected = true;
+                        setOnlySelected(state.selection, 'remove', el.id);
                     }
                     showOnCanvas(imgSrc, el);
                     renderRemoveElements();
                 });
                 div.addEventListener('dblclick', e => {
-                    if (e.target.classList.contains('card-delete')) return;
-                    openModal(el.processed ? el.result : el.preview);
-                });
-                div.querySelector('.card-delete').addEventListener('click', e => {
-                    e.stopPropagation();
-                    state.removeElements.splice(i, 1);
-                    reindexElements(state.removeElements);
-                    renderRemoveElements();
+                    openModal(getElementImage(el, 'remove'));
                 });
                 list.appendChild(div);
             });
@@ -501,20 +461,20 @@
             renderRemoveResults();
             updateBadges();
             updateElementsLayout();
-            updateElementDetail('remove', state.removeElements);
+            updateElementDetail('remove', state.elements);
             
             // 默认显示第一个元素到画布
             if (has && !canvasState.currentImage) {
-                const firstEl = state.removeElements[0];
-                const imgSrc = firstEl.processed ? firstEl.result : firstEl.preview;
+                const firstEl = state.elements[0];
+                const imgSrc = getElementImage(firstEl, 'remove');
                 showOnCanvas(imgSrc, firstEl);
-                firstEl.selected = true;
+                setOnlySelected(state.selection, 'remove', firstEl.id);
                 list.querySelector('.elem-card')?.classList.add('selected');
             }
         }
         
         function renderRemoveResults() {
-            const processed = state.removeElements.filter(e => e.processed);
+            const processed = state.elements.filter(e => e.remove?.processed && e.remove?.result);
             const grid = $('removeResults');
             if (!processed.length) { hide(grid); return; }
             show(grid);
@@ -522,23 +482,23 @@
             processed.forEach(el => {
                 const card = document.createElement('div');
                 card.className = 'result-card';
-                card.innerHTML = '<img src="' + el.result + '"><div class="label">元素 ' + el.index + '</div>';
-                card.addEventListener('click', () => openModal(el.result));
+                card.innerHTML = '<img src="' + el.remove.result + '"><div class="label">元素 ' + el.index + '</div>';
+                card.addEventListener('click', () => openModal(el.remove.result));
                 grid.appendChild(card);
             });
-            $('removeExport').disabled = false;
+            $('removeExport').disabled = !processed.length;
         }
         
         // 吸管取色抠图
         async function pickColorAndRemove(x, y) {
             const cur = canvasState.currentElement;
-            if (!cur || !cur.processed) { setStatus('请先抠图再使用吸管', false, true); return; }
+            if (!cur) { setStatus('请先选择元素', false, true); return; }
             
             setStatus('吸管抠图中...', true);
             
             try {
                 // 重新上传当前元素；套索元素用原始 bbox 图取色，结果再回盖套索 mask
-                const uploadSource = processingPreviewForElement(cur);
+                const uploadSource = removeInputForElement(cur);
                 const blob = await fetch(uploadSource).then(r => r.blob());
                 const fd = new FormData(); fd.append('file', blob, 'el.png');
                 const up = await (await fetch(API + '/api/upload', { method: 'POST', body: fd })).json();
@@ -558,9 +518,10 @@
                 const rd = await (await fetch(API + '/api/remove_background', { method: 'POST', body: rf })).json();
                 
                 if (rd.results?.[0]) {
-                    cur.processed = true;
-                    cur.result = await finalizeRemoveResult(cur, rd.results[0].preview, $('remFloodTol').value);
-                    showOnCanvas(cur.result, cur);
+                    cur.remove.processed = true;
+                    cur.remove.method = 'color_pick';
+                    cur.remove.result = await finalizeRemoveResult(cur, rd.results[0].preview, $('remFloodTol').value);
+                    showOnCanvas(cur.remove.result, cur);
                     renderRemoveElements();
                     setStatus('吸管抠图完成');
                 }
@@ -616,14 +577,14 @@
 
         async function finalizeRemoveResult(element, resultSrc, tolerance) {
             if (!shouldApplyLassoMask(element)) return resultSrc;
-            return await applyLassoMaskToResult(resultSrc, element.preview)
+            return await applyLassoMaskToResult(resultSrc, getElementImage(element, 'split'))
                 || await removeLassoBackground(element, tolerance);
         }
 
         async function removeLassoBackground(element, tolerance) {
             const [rawImg, maskImg] = await Promise.all([
                 loadImage(processingPreviewForElement(element)),
-                loadImage(element.preview),
+                loadImage(getElementImage(element, 'split')),
             ]);
 
             const canvas = document.createElement('canvas');
@@ -685,7 +646,7 @@
                 }
             }
 
-            if (!seedColors.length) return element.preview;
+            if (!seedColors.length) return getElementImage(element, 'split');
 
             const bgColor = seedColors.reduce((acc, color) => {
                 acc[0] += color[0];
@@ -743,7 +704,7 @@
         }
         
         $('processBtn').addEventListener('click', async () => {
-            const sel = state.removeElements.filter(e => e.selected);
+            const sel = getTabSelected('remove');
             if (!sel.length) { setStatus('请先选择元素', false, true); return; }
             $('processBtn').disabled = true;
             setStatus('抠图中 (0/' + sel.length + ')...', true);
@@ -756,7 +717,7 @@
                 setStatus('抠图中 (' + (i+1) + '/' + sel.length + ')...', true);
                 
                 try {
-                    const uploadSource = processingPreviewForElement(sel[i]);
+                    const uploadSource = removeInputForElement(sel[i]);
                     const uploadBlob = await fetch(uploadSource).then(r => r.blob());
                     
                     const fd = new FormData(); fd.append('file', uploadBlob, 'el.png');
@@ -774,8 +735,9 @@
                     const rd = await (await fetch(API + '/api/remove_background', { method: 'POST', body: rf })).json();
                     
                     if (rd.results?.[0]) {
-                        sel[i].processed = true;
-                        sel[i].result = await finalizeRemoveResult(sel[i], rd.results[0].preview, tol);
+                        sel[i].remove.processed = true;
+                        sel[i].remove.method = method;
+                        sel[i].remove.result = await finalizeRemoveResult(sel[i], rd.results[0].preview, tol);
                     }
                 } catch (err) { console.error('元素 ' + sel[i].index + ' 失败:', err); }
             }
@@ -783,9 +745,9 @@
             renderRemoveElements();
             
             // 更新画布显示第一个已处理的选中元素
-            const firstProcessed = sel.find(e => e.processed);
+            const firstProcessed = sel.find(e => e.remove?.processed);
             if (firstProcessed) {
-                showOnCanvas(firstProcessed.result, firstProcessed);
+                showOnCanvas(firstProcessed.remove.result, firstProcessed);
             }
             
             setStatus('完成，处理了 ' + sel.length + ' 个元素');
@@ -812,68 +774,6 @@
             
             // 用 doExport（定义在 split.js）
             if (window.doExport) await window.doExport('remove', format);
-        });
-        
-        // 初始化发送下拉菜单
-        initSendDropdown('removeSendBtn', 'removeSendMenu', (target) => {
-            const sel = state.removeElements.filter(e => e.selected);
-            if (!sel.length) { showToast('请先选择元素', 'error'); return; }
-            
-            if (target === 'split') {
-                syncElementsToTarget(state.splitElements, sel, (el) => ({
-                    index: 0,
-                    preview: el.processed ? el.result : el.preview,
-                    selected: true,
-                    name: el.name || ('element_' + el.index),
-                    sourceElementId: el.sourceElementId || el.id,
-                    sourceImageId: el.sourceImageId,
-                    sourceImageSize: el.sourceImageSize,
-                    bbox: el.bbox,
-                    rawPreview: el.rawPreview,
-                    type: el.type || null
-                }));
-                renderSplitElements();
-                document.querySelector('.tab[data-panel="split"]').click();
-            } else if (target === 'upscale') {
-                syncElementsToTarget(state.upscaleItems, sel, (el) => ({
-                    index: 0,
-                    src: el.processed ? el.result : el.preview,
-                    name: el.name || ('element_' + el.index),
-                    sourceElementId: el.sourceElementId || el.id,
-                    sourceImageId: el.sourceImageId,
-                    sourceImageSize: el.sourceImageSize,
-                    bbox: el.bbox,
-                    rawPreview: el.rawPreview,
-                    selected: true,
-                    processed: false,
-                    result: null
-                }));
-                renderUpscaleElements();
-                // 自动显示第一个元素到画布
-                const first = state.upscaleItems[0];
-                if (first) showUpscaleCanvas(first.src, first);
-                $('upscaleBtn').disabled = false;
-                document.querySelector('.tab[data-panel="upscale"]').click();
-            } else if (target === 'recognize') {
-                syncElementsToTarget(state.recognizeItems, sel, (el) => ({
-                    index: 0,
-                    src: el.processed ? el.result : el.preview,
-                    name: el.name || ('element_' + el.index),
-                    sourceElementId: el.sourceElementId || el.id,
-                    sourceImageId: el.sourceImageId,
-                    sourceImageSize: el.sourceImageSize,
-                    bbox: el.bbox,
-                    rawPreview: el.rawPreview,
-                    selected: true,
-                    label: null,
-                    confidence: null,
-                    suggestedName: null
-                }));
-                renderRecognizeElements();
-                document.querySelector('.tab[data-panel="recognize"]').click();
-            }
-            
-            showToast(`已同步 ${sel.length} 个元素`);
         });
         
         // 元素条框选（函数定义在 shared.js）

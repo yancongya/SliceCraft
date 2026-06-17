@@ -1,141 +1,62 @@
 // ============ 图片识别面板 ============
 
-// 识别状态
 const recognizeState = {
     model: 'clip',
-    customLabels: ''
 };
 
-// state.recognizeItems 在 shared.js 中初始化
+function recognizeImagePurpose() {
+    const mode = $('recognizeInputSource')?.value || 'latest';
+    if (mode === 'split') return 'split';
+    if (mode === 'remove') return 'remove';
+    if (mode === 'upscale') return 'upscale';
+    return 'latest';
+}
 
-// ============ 获取内容 ============
-$('getFromSplitForRecognize')?.addEventListener('click', () => {
-    const selected = state.splitElements.filter(e => e.selected);
-    if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
-
-    syncElementsToTarget(state.recognizeItems, selected, (el) => ({
-        index: 0,
-        src: el.preview,
-        name: el.name || ('element_' + el.index),
-        sourceElementId: el.sourceElementId || el.id,
-        sourceImageId: el.sourceImageId,
-        sourceImageSize: el.sourceImageSize,
-        bbox: el.bbox,
-        rawPreview: el.rawPreview,
-        selected: true,
-        label: null,
-        confidence: null
-    }));
-
-    renderRecognizeElements();
-    $('recognizeBtn').disabled = false;
-    showToast('已同步 ' + selected.length + ' 个元素');
-});
-
-$('getFromRemoveForRecognize')?.addEventListener('click', () => {
-    const processed = state.removeElements.filter(e => e.processed && e.result);
-    if (!processed.length) { showToast('请先在抠图面板处理元素', 'error'); return; }
-
-    syncElementsToTarget(state.recognizeItems, processed, (el) => ({
-        index: 0,
-        src: el.result,
-        name: el.name || ('element_' + el.index),
-        sourceElementId: el.sourceElementId || el.id,
-        sourceImageId: el.sourceImageId,
-        sourceImageSize: el.sourceImageSize,
-        bbox: el.bbox,
-        rawPreview: el.rawPreview,
-        selected: true,
-        label: null,
-        confidence: null
-    }));
-
-    renderRecognizeElements();
-    $('recognizeBtn').disabled = false;
-    showToast('已同步 ' + processed.length + ' 个元素');
-});
-
-$('getFromUpscaleForRecognize')?.addEventListener('click', () => {
-    const processed = state.upscaleItems.filter(e => e.processed && e.result);
-    if (!processed.length) { showToast('请先在放大面板处理元素', 'error'); return; }
-
-    syncElementsToTarget(state.recognizeItems, processed, (el) => ({
-        index: 0,
-        src: el.result,
-        name: el.name || ('element_' + el.index),
-        sourceElementId: el.sourceElementId || el.id,
-        sourceImageId: el.sourceImageId,
-        sourceImageSize: el.sourceImageSize,
-        bbox: el.bbox,
-        rawPreview: el.rawPreview,
-        selected: true,
-        label: null,
-        confidence: null
-    }));
-
-    renderRecognizeElements();
-    $('recognizeBtn').disabled = false;
-    showToast('已同步 ' + processed.length + ' 个元素');
-});
-
-// ============ 渲染卡片（多行网格布局） ============
 function renderRecognizeElements() {
-    const has = state.recognizeItems.length > 0;
-    $('recognizeCount').textContent = state.recognizeItems.length + ' 个';
+    const has = state.elements.length > 0;
+    $('recognizeCount').textContent = state.elements.length + ' 个';
+    $('recognizeBtn').disabled = !has;
 
     const list = $('recognizeList');
     if (!list) return;
     list.innerHTML = '';
     list.className = 'elements-container recognize-grid';
 
-    state.recognizeItems.forEach((el, i) => {
+    const purpose = recognizeImagePurpose();
+    state.elements.forEach((el) => {
+        const imgSrc = getElementImage(el, purpose);
         const div = document.createElement('div');
-        div.className = 'elem-card' + (el.selected ? ' selected' : '');
+        div.className = 'elem-card' + (isSelected(state.selection, 'recognize', el.id) ? ' selected' : '');
         div.dataset.index = el.index;
-        
-        // 标签显示
+        div.dataset.id = el.id;
+
+        const label = el.recognition?.label;
+        const confidence = el.recognition?.confidence;
         let labelHtml = '';
-        if (el.label) {
-            const conf = el.confidence ? ' (' + Math.round(el.confidence * 100) + '%)' : '';
-            labelHtml = '<span class="recognize-label" title="' + el.label + conf + '">' + el.label + conf + '</span>';
+        if (label) {
+            const conf = confidence ? ' (' + Math.round(confidence * 100) + '%)' : '';
+            labelHtml = '<span class="recognize-label" title="' + label + conf + '">' + label + conf + '</span>';
         }
-        
-        div.innerHTML = '<img src="' + el.src + '"><span class="num">' + el.index + '</span>' + labelHtml + '<button class="card-delete" title="删除">×</button>';
-        
-        // 点击：单选
+
+        div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span>' + labelHtml;
+
         div.addEventListener('click', e => {
-            if (e.target.classList.contains('card-delete')) return;
             if (e.shiftKey) {
-                el.selected = true;
+                setSelected(state.selection, 'recognize', el.id, true);
             } else {
-                state.recognizeItems.forEach(x => x.selected = false);
-                el.selected = true;
+                setOnlySelected(state.selection, 'recognize', el.id);
             }
             renderRecognizeElements();
         });
-        
-        // 双击：预览
-        div.addEventListener('dblclick', e => {
-            if (e.target.classList.contains('card-delete')) return;
-            openModal(el.src);
-        });
-        
-        // 删除
-        div.querySelector('.card-delete').addEventListener('click', e => {
-            e.stopPropagation();
-            state.recognizeItems.splice(i, 1);
-            reindexElements(state.recognizeItems);
-            renderRecognizeElements();
-        });
-        
+
+        div.addEventListener('dblclick', () => openModal(getElementImage(el, purpose)));
         list.appendChild(div);
     });
 
     updateBadges();
-    updateElementDetail('recognize', state.recognizeItems);
+    updateElementDetail('recognize', state.elements);
 }
 
-// ============ 模型选择 ============
 function updateRecognizeModelInfo() {
     const desc = $('recognizeModelDesc');
     if (desc) {
@@ -146,14 +67,15 @@ function updateRecognizeModelInfo() {
 }
 updateRecognizeModelInfo();
 
+$('recognizeInputSource')?.addEventListener('change', renderRecognizeElements);
+
 $('recognizeModel')?.addEventListener('change', e => {
     recognizeState.model = e.target.value;
     updateRecognizeModelInfo();
 });
 
-// ============ 开始识别 ============
 $('recognizeBtn')?.addEventListener('click', async () => {
-    const selected = state.recognizeItems.filter(e => e.selected);
+    const selected = getTabSelected('recognize');
     if (!selected.length) { showToast('请先选择元素', 'error'); return; }
 
     $('recognizeBtn').disabled = true;
@@ -161,7 +83,8 @@ $('recognizeBtn')?.addEventListener('click', async () => {
     setStatus('识别中...', true);
 
     const model = recognizeState.model;
-    const labels = model === 'clip' ? $('customLabelsInput')?.value : null;
+    const labels = $('customLabelsInput')?.value || null;
+    const purpose = recognizeImagePurpose();
 
     let successCount = 0;
     const total = selected.length;
@@ -172,7 +95,8 @@ $('recognizeBtn')?.addEventListener('click', async () => {
         setStatus('识别中 (' + (i + 1) + '/' + total + ')...', true);
 
         try {
-            const blob = await fetch(el.src).then(r => r.blob());
+            const src = getElementImage(el, purpose);
+            const blob = await fetch(src).then(r => r.blob());
             const fd = new FormData();
             fd.append('file', blob, 'image.png');
             const upRes = await fetch(API + '/api/upload', { method: 'POST', body: fd });
@@ -188,17 +112,17 @@ $('recognizeBtn')?.addEventListener('click', async () => {
             if (!res.ok) throw new Error('识别失败');
 
             const data = await res.json();
-            el.label = data.best_label;
-            el.confidence = data.best_confidence;
-            if (data.best_label) el.label = data.best_label;
+            el.recognition.label = data.best_label;
+            el.recognition.confidence = data.best_confidence;
+            el.recognition.model = model;
             successCount++;
         } catch (err) {
             console.error('识别失败:', err);
         }
     }
 
-    uniqueNamesFromLabels(selected.filter(e => e.label));
-    renderRecognizeElements();
+    uniqueNamesFromLabels(selected);
+    renderAllElementViews();
     $('recognizeBtn').disabled = false;
     $('applyNamesBtn').disabled = false;
     $('recognizeProgress').style.display = 'none';
@@ -206,37 +130,20 @@ $('recognizeBtn')?.addEventListener('click', async () => {
     showToast('识别完成 ' + successCount + '/' + total + ' 个');
 });
 
-// ============ 应用名称（带编号去重） ============
 $('applyNamesBtn')?.addEventListener('click', () => {
-    const items = state.recognizeItems.filter(e => e.label);
+    const items = state.elements.filter(e => e.recognition?.label);
     if (!items.length) { showToast('没有识别结果', 'error'); return; }
-
     uniqueNamesFromLabels(items);
-
-    renderRecognizeElements();
+    renderAllElementViews();
     showToast('已应用名称');
 });
 
-// ============ 同步名称到其他 tab ============
-$('syncNamesBtn')?.addEventListener('click', () => {
-    const items = state.recognizeItems.filter(e => e.name);
-    if (!items.length) { showToast('没有可同步的名称', 'error'); return; }
-
-    syncNamesBySource(items, [state.splitElements, state.removeElements, state.upscaleItems]);
-
-    if (typeof renderSplitElements === 'function') renderSplitElements();
-    if (typeof renderRemoveElements === 'function') renderRemoveElements();
-    if (typeof renderUpscaleElements === 'function') renderUpscaleElements();
-
-    showToast('已同步名称到其他面板');
-});
-
-// ============ 全选/取消 ============
 $('selectRecognizeAll')?.addEventListener('click', () => {
-    state.recognizeItems.forEach(e => e.selected = true);
+    selectAll(state.selection, 'recognize', state.elements);
     renderRecognizeElements();
 });
+
 $('deselectRecognizeAll')?.addEventListener('click', () => {
-    state.recognizeItems.forEach(e => e.selected = false);
+    clearSelection(state.selection, 'recognize');
     renderRecognizeElements();
 });

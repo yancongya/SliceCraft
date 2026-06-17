@@ -43,20 +43,26 @@
             splitImageId: null,
             splitImageSize: null,
             splitHasManualEdits: false,
-            splitElements: [],
-            removeElements: [],
-            upscaleItems: [],
-            recognizeItems: []
+            elements: [],
+            selection: window.ElementModel.createSelectionState(),
         };
         const {
             createElementId,
+            createElementFromSplit,
+            clearSelection,
+            getElementImage,
+            getSelectedElements,
+            isSelected,
+            pruneSelections,
             reindexElements,
-            syncElementsToTarget,
-            syncNamesBySource,
+            selectAll,
+            setOnlySelected,
+            setSelected,
             uniqueNamesFromLabels,
             processingPreviewForElement,
             shouldApplyLassoMask,
             shouldPreserveLassoRegion,
+            toLegacyElement,
         } = window.ElementModel;
         
         // ============ 工具函数 ============
@@ -66,15 +72,32 @@
         }
         
         function updateBadges() {
-            const s = state.splitElements.filter(e => e.selected).length;
-            const r = state.removeElements.filter(e => e.selected).length;
-            const u = (state.upscaleItems || []).filter(e => e.selected).length;
-            const g = (state.recognizeItems || []).filter(e => e.selected).length;
+            const s = state.selection.split.size;
+            const r = state.selection.remove.size;
+            const u = state.selection.upscale.size;
+            const g = state.selection.recognize.size;
             const sb = $('splitBadge'), rb = $('removeBadge'), ub = $('upscaleBadge'), gb = $('recognizeBadge');
             s > 0 ? (sb.textContent = s, show(sb)) : hide(sb);
             r > 0 ? (rb.textContent = r, show(rb)) : hide(rb);
             u > 0 ? (ub.textContent = u, show(ub)) : hide(ub);
             g > 0 ? (gb.textContent = g, show(gb)) : hide(gb);
+        }
+
+        function getTabElements(tab) {
+            return state.elements;
+        }
+
+        function getTabSelected(tab) {
+            return getSelectedElements(state.elements, state.selection, tab);
+        }
+
+        function renderAllElementViews() {
+            pruneSelections(state.selection, state.elements);
+            if (typeof renderSplitElements === 'function') renderSplitElements();
+            if (typeof renderRemoveElements === 'function') renderRemoveElements();
+            if (typeof renderUpscaleElements === 'function') renderUpscaleElements();
+            if (typeof renderRecognizeElements === 'function') renderRecognizeElements();
+            updateBadges();
         }
         
         // ============ Tab ============
@@ -261,32 +284,30 @@
                 
                 // 添加套索元素
                 const lassoEl = data.lasso_element;
-                lassoEl.id = createElementId('split');
-                lassoEl.sourceElementId = lassoEl.id;
-                lassoEl.sourceImageId = state.splitImageId;
-                lassoEl.sourceImageSize = state.splitImageSize;
-                lassoEl.index = state.splitElements.length + 1;
-                lassoEl.selected = true;
-                state.splitElements.push(lassoEl);
+                const lassoElement = createElementFromSplit(lassoEl, state.elements.length, {
+                    sourceImageId: state.splitImageId,
+                    sourceImageSize: state.splitImageSize,
+                });
+                state.elements.push(lassoElement);
+                setSelected(state.selection, 'split', lassoElement.id, true);
                 
                 // 添加剩余元素
                 if (data.remaining_elements) {
                     data.remaining_elements.forEach(el => {
-                        el.id = createElementId('split');
-                        el.sourceElementId = el.id;
-                        el.sourceImageId = state.splitImageId;
-                        el.sourceImageSize = state.splitImageSize;
-                        el.index = state.splitElements.length + 1;
-                        el.selected = true;
-                        state.splitElements.push(el);
+                        const remainingElement = createElementFromSplit(el, state.elements.length, {
+                            sourceImageId: state.splitImageId,
+                            sourceImageSize: state.splitImageSize,
+                        });
+                        state.elements.push(remainingElement);
+                        setSelected(state.selection, 'split', remainingElement.id, true);
                     });
                 }
                 
-                reindexElements(state.splitElements);
+                reindexElements(state.elements);
                 state.splitHasManualEdits = true;
                 
-                renderSplitElements();
-                setStatus(`套索切分完成，共 ${state.splitElements.length} 个元素`);
+                renderAllElementViews();
+                setStatus(`套索切分完成，共 ${state.elements.length} 个元素`);
             } catch (err) {
                 setStatus(err.message, false, true);
             }
@@ -413,7 +434,7 @@
         });
         
         // ============ 框选 ============
-        function initMarquee(previewId, elementsKey) {
+        function initMarquee(previewId, tab) {
             const preview = $(previewId);
             if (!preview) return;
             
@@ -492,7 +513,7 @@
                         const elapsed = Date.now() - mouseDownTime;
                         if (elapsed < 300) {
                             // 短点击：取消全部选择
-                            state[elementsKey].forEach(el => el.selected = false);
+                            clearSelection(state.selection, tab);
                             preview.querySelectorAll('.elem-card').forEach(c => c.classList.remove('selected'));
                             updateBadges();
                         }
@@ -508,7 +529,7 @@
                 
                 // 如果选框太小，视为点击空白，取消全部选择
                 if (box.width < 5 && box.height < 5) {
-                    state[elementsKey].forEach(el => el.selected = false);
+                    clearSelection(state.selection, tab);
                     preview.querySelectorAll('.elem-card').forEach(c => c.classList.remove('selected'));
                     updateBadges();
                     return;
@@ -521,17 +542,18 @@
                 cards.forEach(card => {
                     const cardRect = card.getBoundingClientRect();
                     if (intersects(box, cardRect)) {
-                        const idx = parseInt(card.dataset.index);
-                        const el = state[elementsKey].find(e => e.index === idx);
+                        const id = card.dataset.id;
+                        const el = state.elements.find(e => e.id === id);
                         if (el) {
                             if (shiftKey) {
                                 // Shift + 框选：强制加选
-                                el.selected = true;
+                                setSelected(state.selection, tab, el.id, true);
                                 card.classList.add('selected');
                             } else {
                                 // 普通框选：切换选中状态
-                                el.selected = !el.selected;
-                                card.classList.toggle('selected', el.selected);
+                                const next = !isSelected(state.selection, tab, el.id);
+                                setSelected(state.selection, tab, el.id, next);
+                                card.classList.toggle('selected', next);
                             }
                             count++;
                         }
@@ -540,7 +562,7 @@
                 
                 if (count > 0) {
                     updateBadges();
-                    const selectedCount = state[elementsKey].filter(e => e.selected).length;
+                    const selectedCount = state.selection[tab].size;
                     setStatus(`框选了 ${count} 个元素，共选中 ${selectedCount} 个`);
                 }
             });
@@ -548,7 +570,7 @@
             // 双击空白：全选
             preview.addEventListener('dblclick', e => {
                 if (e.target.closest('.elem-card') || e.target.closest('button')) return;
-                state[elementsKey].forEach(el => el.selected = true);
+                selectAll(state.selection, tab, state.elements);
                 preview.querySelectorAll('.elem-card').forEach(c => c.classList.add('selected'));
                 updateBadges();
                 setStatus('已全选');
@@ -586,14 +608,14 @@
             ctx.scale(dpr, dpr);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            if (!state.splitElements.length) return;
+            if (!state.elements.length) return;
             
             const offsetX = imgRect.left - containerRect.left;
             const offsetY = imgRect.top - containerRect.top;
             const scaleX = imgRect.width / img.naturalWidth;
             const scaleY = imgRect.height / img.naturalHeight;
             
-            state.splitElements.forEach((el, i) => {
+            state.elements.forEach((el, i) => {
                 const [x, y, w, h] = el.bbox;
                 const sx = offsetX + x * scaleX;
                 const sy = offsetY + y * scaleY;
@@ -618,7 +640,7 @@
         
         // 点击画布边框删除元素
         $('overlayCanvas')?.addEventListener('click', e => {
-            if (!state.splitElements.length) return;
+            if (!state.elements.length) return;
             
             const canvas = $('overlayCanvas');
             const img = $('splitImage');
@@ -633,8 +655,8 @@
             const scaleX = imgRect.width / img.naturalWidth;
             const scaleY = imgRect.height / img.naturalHeight;
             
-            for (let i = state.splitElements.length - 1; i >= 0; i--) {
-                const el = state.splitElements[i];
+            for (let i = state.elements.length - 1; i >= 0; i--) {
+                const el = state.elements[i];
                 const [x, y, w, h] = el.bbox;
                 const sx = offsetX + x * scaleX;
                 const sy = offsetY + y * scaleY;
@@ -642,9 +664,10 @@
                 const sh = h * scaleY;
                 
                 if (clickX >= sx && clickX <= sx + sw && clickY >= sy && clickY <= sy + sh) {
-                    state.splitElements.splice(i, 1);
+                    state.elements.splice(i, 1);
+                    pruneSelections(state.selection, state.elements);
                     drawOverlay();
-                    if (typeof renderSplitElements === 'function') renderSplitElements();
+                    renderAllElementViews();
                     setStatus('已删除元素 ' + el.index);
                     return;
                 }
@@ -653,7 +676,7 @@
         
         // 鼠标悬停样式
         $('overlayCanvas')?.addEventListener('mousemove', e => {
-            if (!state.splitElements.length) return;
+            if (!state.elements.length) return;
             
             const canvas = $('overlayCanvas');
             const img = $('splitImage');
@@ -669,7 +692,7 @@
             const scaleY = imgRect.height / img.naturalHeight;
             
             let hovering = false;
-            for (const el of state.splitElements) {
+            for (const el of state.elements) {
                 const [x, y, w, h] = el.bbox;
                 const sx = offsetX + x * scaleX;
                 const sy = offsetY + y * scaleY;
@@ -683,50 +706,35 @@
             canvas.style.cursor = hovering ? 'pointer' : 'default';
         });
         
-        // ============ 元素同步工具 ============
-        window.syncElementsToTarget = syncElementsToTarget;
-        window.syncNamesBySource = syncNamesBySource;
+        // ============ 元素模型工具 ============
         window.uniqueNamesFromLabels = uniqueNamesFromLabels;
         window.reindexElements = reindexElements;
         window.createElementId = createElementId;
+        window.createElementFromSplit = createElementFromSplit;
+        window.clearSelection = clearSelection;
+        window.getElementImage = getElementImage;
+        window.getSelectedElements = getSelectedElements;
+        window.getTabElements = getTabElements;
+        window.getTabSelected = getTabSelected;
+        window.isSelected = isSelected;
+        window.pruneSelections = pruneSelections;
+        window.renderAllElementViews = renderAllElementViews;
+        window.selectAll = selectAll;
+        window.setOnlySelected = setOnlySelected;
+        window.setSelected = setSelected;
         window.processingPreviewForElement = processingPreviewForElement;
         window.shouldApplyLassoMask = shouldApplyLassoMask;
         window.shouldPreserveLassoRegion = shouldPreserveLassoRegion;
-        
-        // ============ 发送下拉菜单 ============
-        function initSendDropdown(btnId, menuId, sendFn) {
-            const btn = $(btnId);
-            const menu = $(menuId);
-            if (!btn || !menu) return;
-            
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menu.classList.toggle('show');
-            });
-            
-            menu.querySelectorAll('button[data-target]').forEach(targetBtn => {
-                targetBtn.addEventListener('click', () => {
-                    const target = targetBtn.dataset.target;
-                    sendFn(target);
-                    menu.classList.remove('show');
-                });
-            });
-            
-            // 点击外部关闭菜单
-            document.addEventListener('click', () => {
-                menu.classList.remove('show');
-            });
-        }
-        window.initSendDropdown = initSendDropdown;
+        window.toLegacyElement = toLegacyElement;
         
         // ============ 初始化框选 ============
-        initMarquee('splitList', 'splitElements');
-        initMarquee('removeList', 'removeElements');
-        initMarquee('upscaleList', 'upscaleItems');
-        initMarquee('recognizeList', 'recognizeItems');
+        initMarquee('splitList', 'split');
+        initMarquee('removeList', 'remove');
+        initMarquee('upscaleList', 'upscale');
+        initMarquee('recognizeList', 'recognize');
         
         // ============ 元素卡片框选（在列表容器内拖拽） ============
-        function initElementsMarquee(containerId, elementsKey) {
+        function initElementsMarquee(containerId, tab) {
             const container = $(containerId);
             if (!container) return;
             
@@ -770,11 +778,11 @@
                 container.querySelectorAll('.elem-card').forEach(card => {
                     const cardRect = card.getBoundingClientRect();
                     if (!(box.right < cardRect.left || box.left > cardRect.right || box.bottom < cardRect.top || box.top > cardRect.bottom)) {
-                        const idx = parseInt(card.dataset.index);
-                        const el = state[elementsKey].find(e => e.index === idx);
+                        const id = card.dataset.id;
+                        const el = state.elements.find(e => e.id === id);
                         if (el) {
-                            el.selected = altKey ? false : true;
-                            card.classList.toggle('selected', el.selected);
+                            setSelected(state.selection, tab, el.id, !altKey);
+                            card.classList.toggle('selected', !altKey);
                             count++;
                         }
                     }
@@ -785,17 +793,17 @@
                 if (active && marquee) { active = false; marquee.remove(); marquee = null; }
             });
         }
-        initElementsMarquee('splitList', 'splitElements');
-        initElementsMarquee('removeList', 'removeElements');
-        initElementsMarquee('upscaleList', 'upscaleItems');
-        initElementsMarquee('recognizeList', 'recognizeItems');
+        initElementsMarquee('splitList', 'split');
+        initElementsMarquee('removeList', 'remove');
+        initElementsMarquee('upscaleList', 'upscale');
+        initElementsMarquee('recognizeList', 'recognize');
         
         // ============ 元素详情（header 中显示） ============
         function updateElementDetail(tab, elements) {
             const detail = $(tab + 'Detail');
             if (!detail) return;
             
-            const selected = elements.filter(e => e.selected);
+            const selected = getTabSelected(tab);
             
             if (selected.length === 1) {
                 const el = selected[0];
@@ -808,14 +816,14 @@
                     let w = 0, h = 0;
                     if (el.bbox) {
                         w = el.bbox[2]; h = el.bbox[3];
-                    } else if (el.resultWidth && el.resultHeight) {
-                        w = el.resultWidth; h = el.resultHeight;
+                    } else if (el.upscale?.resultWidth && el.upscale?.resultHeight) {
+                        w = el.upscale.resultWidth; h = el.upscale.resultHeight;
                     }
                     
                     if (w && h) {
                         sizeEl.textContent = w + ' × ' + h;
                     } else {
-                        const imgSrc = el.processed ? el.result : el.src || el.preview;
+                        const imgSrc = getElementImage(el, tab);
                         if (imgSrc) {
                             const img = new Image();
                             img.onload = () => { sizeEl.textContent = img.width + ' × ' + img.height; };
@@ -828,7 +836,12 @@
                 
                 if (nameEl) {
                     nameEl.value = el.name || ('element_' + el.index);
-                    nameEl.onchange = () => { el.name = nameEl.value; };
+                    nameEl.oninput = () => {
+                        el.name = nameEl.value;
+                    };
+                    nameEl.onchange = () => {
+                        el.name = nameEl.value;
+                    };
                     // 回车时取消焦点
                     nameEl.onkeydown = (e) => { if (e.key === 'Enter') nameEl.blur(); };
                 }
@@ -866,17 +879,12 @@
                     updateCacheInfo();
                     
                     // 清理本地状态
-                    state.splitElements = [];
-                    state.removeElements = [];
-                    state.upscaleItems = [];
-                    state.recognizeItems = [];
+                    state.elements = [];
+                    state.selection = window.ElementModel.createSelectionState();
                     state.splitImageId = null;
                     
                     // 刷新所有面板
-                    if (typeof renderSplitElements === 'function') renderSplitElements();
-                    if (typeof renderRemoveElements === 'function') renderRemoveElements();
-                    if (typeof renderUpscaleElements === 'function') renderUpscaleElements();
-                    if (typeof renderRecognizeElements === 'function') renderRecognizeElements();
+                    renderAllElementViews();
                     
                     // 隐藏画布
                     const splitImg = $('splitImage');

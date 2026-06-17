@@ -426,7 +426,8 @@ input, select { font-family: inherit; font-size: inherit; }
 
 .elements-container.recognize-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 104px));
+  grid-template-columns: repeat(auto-fill, 96px);
+  grid-auto-rows: 96px;
   gap: 10px;
   align-content: start;
   justify-content: start;
@@ -477,9 +478,8 @@ input, select { font-family: inherit; font-size: inherit; }
 }
 
 .recognize-grid .elem-card {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1;
+  width: 96px;
+  height: 96px;
   overflow: hidden;
   background: var(--surface-1);
 }
@@ -953,56 +953,6 @@ input, select { font-family: inherit; font-size: inherit; }
   color: var(--text-1);
   white-space: nowrap;
   font-weight: 500;
-}
-
-/* ============ Send Dropdown ============ */
-.send-dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.send-dropdown-menu {
-  display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  z-index: 100;
-  min-width: 120px;
-  padding: 4px;
-}
-
-.send-dropdown-menu.show {
-  display: block;
-}
-
-.send-dropdown-menu button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  background: none;
-  font-size: 12px;
-  color: var(--text-0);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  text-align: left;
-  transition: background 0.1s;
-}
-
-.send-dropdown-menu button:hover {
-  background: var(--surface-2);
-}
-
-.send-dropdown-menu button svg {
-  width: 12px;
-  height: 12px;
-  color: var(--text-2);
 }
 
 /* ============ Element Detail ============ */

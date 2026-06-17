@@ -2,14 +2,68 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+    createElementFromSplit,
+    createSelectionState,
+    getElementImage,
+    getSelectedElements,
     reindexElements,
     processingPreviewForElement,
+    setSelected,
     syncElementsToTarget,
     syncNamesBySource,
     uniqueNamesFromLabels,
     shouldApplyLassoMask,
     shouldPreserveLassoRegion,
 } = require('../frontend/element-model.js');
+
+test('createElementFromSplit creates a unified element from split output', () => {
+    const element = createElementFromSplit({
+        index: 2,
+        bbox: [10, 20, 30, 40],
+        preview: 'split.png',
+        rawPreview: 'raw.png',
+        type: 'lasso',
+    }, 1, { sourceImageId: 'img-1', sourceImageSize: { w: 100, h: 200 } });
+
+    assert.equal(element.index, 2);
+    assert.equal(element.name, 'element_2');
+    assert.deepEqual(element.bbox, [10, 20, 30, 40]);
+    assert.equal(element.split.preview, 'split.png');
+    assert.equal(element.split.rawPreview, 'raw.png');
+    assert.equal(element.split.type, 'lasso');
+    assert.equal(element.remove.processed, false);
+    assert.equal(element.upscale.processed, false);
+    assert.equal(element.recognition.label, null);
+});
+
+test('getElementImage chooses the expected version for each purpose', () => {
+    const element = createElementFromSplit({ preview: 'split.png', rawPreview: 'raw.png' }, 0);
+    element.remove.result = 'removed.png';
+    element.remove.processed = true;
+    element.upscale.result = 'upscaled.png';
+    element.upscale.processed = true;
+
+    assert.equal(getElementImage(element, 'split'), 'split.png');
+    assert.equal(getElementImage(element, 'remove-input'), 'upscaled.png');
+    assert.equal(getElementImage(element, 'upscale-input'), 'removed.png');
+    assert.equal(getElementImage(element, 'recognize'), 'upscaled.png');
+    assert.equal(getElementImage(element, 'export'), 'upscaled.png');
+    assert.equal(getElementImage(element, 'export-remove'), 'removed.png');
+});
+
+test('selection is independent per tab while sharing element data', () => {
+    const elements = [
+        createElementFromSplit({ preview: 'a.png' }, 0),
+        createElementFromSplit({ preview: 'b.png' }, 1),
+    ];
+    const selection = createSelectionState();
+
+    setSelected(selection, 'split', elements[0].id, true);
+    setSelected(selection, 'remove', elements[1].id, true);
+
+    assert.deepEqual(getSelectedElements(elements, selection, 'split').map(el => el.id), [elements[0].id]);
+    assert.deepEqual(getSelectedElements(elements, selection, 'remove').map(el => el.id), [elements[1].id]);
+});
 
 test('syncElementsToTarget deduplicates by stable source id instead of editable name', () => {
     const split = reindexElements([

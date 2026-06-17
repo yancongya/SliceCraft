@@ -1,6 +1,5 @@
 // ============ AI 放大面板 ============
-// state.upscaleItems 在 shared.js 中初始化
-// 每项: { index, src, name, selected, processed, result, resultWidth, resultHeight }
+// 放大面板直接读写 state.elements，每项的结果写入 element.upscale。
 
 // 画布状态（仅用于缩放/拖拽）
 const upscaleCanvasState = {
@@ -115,17 +114,17 @@ function updateUpscaleCanvasBackground() {
 let upscaleShowingOriginal = false;
 function showUpscaleOriginal() {
     const cur = upscaleCanvasState.currentElement;
-    if (!cur || !cur.processed || upscaleShowingOriginal) return;
+    if (!cur || !cur.upscale?.processed || upscaleShowingOriginal) return;
     upscaleShowingOriginal = true;
     $('upscaleEyeBtn')?.classList.add('active');
-    showUpscaleCanvas(cur.src, cur);
+    showUpscaleCanvas(getElementImage(cur, 'upscale-input'), cur);
 }
 function hideUpscaleOriginal() {
     if (!upscaleShowingOriginal) return;
     upscaleShowingOriginal = false;
     $('upscaleEyeBtn')?.classList.remove('active');
     const cur = upscaleCanvasState.currentElement;
-    if (cur && cur.result) showUpscaleCanvas(cur.result, cur);
+    if (cur && cur.upscale?.result) showUpscaleCanvas(cur.upscale.result, cur);
 }
 $('upscaleEyeBtn')?.addEventListener('mousedown', showUpscaleOriginal);
 $('upscaleEyeBtn')?.addEventListener('mouseup', hideUpscaleOriginal);
@@ -158,169 +157,51 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mouseup', () => { upscaleCanvasState.isDragging = false; });
 
-// ============ 渲染卡片（和 splitElements/removeElements 完全一致） ============
+// ============ 渲染卡片 ============
 function renderUpscaleElements() {
-    const has = state.upscaleItems.length > 0;
+    const has = state.elements.length > 0;
     $('upscaleBar').classList.toggle('hidden', !has);
-    $('upscaleCount').textContent = state.upscaleItems.length + ' 个';
+    $('upscaleUploadZone')?.classList.toggle('hidden', has);
+    $('upscaleCount').textContent = state.elements.length + ' 个';
+    $('upscaleBtn').disabled = !has;
 
     const list = $('upscaleList');
     list.innerHTML = '';
 
-    state.upscaleItems.forEach((el, i) => {
+    state.elements.forEach((el) => {
         const div = document.createElement('div');
-        div.className = 'elem-card' + (el.selected ? ' selected' : '');
+        div.className = 'elem-card' + (isSelected(state.selection, 'upscale', el.id) ? ' selected' : '');
         div.dataset.index = el.index;
-        const imgSrc = el.processed ? el.result : el.src;
-        div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
+        div.dataset.id = el.id;
+        const imgSrc = getElementImage(el, 'upscale');
+        div.innerHTML = '<img src="' + imgSrc + '"><span class="num">' + el.index + '</span>';
         div.addEventListener('click', e => {
-            if (e.target.classList.contains('card-delete')) return;
             if (e.shiftKey) {
-                el.selected = true;
+                setSelected(state.selection, 'upscale', el.id, true);
             } else {
-                state.upscaleItems.forEach(x => x.selected = false);
-                el.selected = true;
+                setOnlySelected(state.selection, 'upscale', el.id);
             }
             showUpscaleCanvas(imgSrc, el);
             renderUpscaleElements();
         });
         div.addEventListener('dblclick', e => {
-            if (e.target.classList.contains('card-delete')) return;
             openModal(imgSrc);
-        });
-        div.querySelector('.card-delete').addEventListener('click', e => {
-            e.stopPropagation();
-            state.upscaleItems.splice(i, 1);
-            reindexElements(state.upscaleItems);
-            renderUpscaleElements();
         });
         list.appendChild(div);
     });
 
     updateBadges();
     updateElementsLayout();
-    updateElementDetail('upscale', state.upscaleItems);
+    updateElementDetail('upscale', state.elements);
 }
-
-// ============ 获取内容 ============
-$('getFromSplitBtn')?.addEventListener('click', () => {
-    const selected = state.splitElements.filter(e => e.selected);
-    if (!selected.length) { showToast('请先在切分面板选择元素', 'error'); return; }
-
-    syncElementsToTarget(state.upscaleItems, selected, (el) => ({
-        index: 0,
-        src: el.preview,
-        name: el.name || ('element_' + el.index),
-        sourceElementId: el.sourceElementId || el.id,
-        sourceImageId: el.sourceImageId,
-        sourceImageSize: el.sourceImageSize,
-        bbox: el.bbox,
-        rawPreview: el.rawPreview,
-        selected: true,
-        processed: false,
-        result: null
-    }));
-
-    renderUpscaleElements();
-    const last = state.upscaleItems[state.upscaleItems.length - 1];
-    if (last) showUpscaleCanvas(last.src, last);
-    $('upscaleBtn').disabled = false;
-    $('upscaleExportBtn').disabled = true;
-    showToast(`已同步 ${selected.length} 个切分元素`);
-});
-
-$('getFromRemoveBtn')?.addEventListener('click', () => {
-    const processed = state.removeElements.filter(e => e.processed && e.result);
-    if (!processed.length) { showToast('请先在抠图面板处理元素', 'error'); return; }
-
-    syncElementsToTarget(state.upscaleItems, processed, (el) => ({
-        index: 0,
-        src: el.result,
-        name: el.name || ('element_' + el.index),
-        sourceElementId: el.sourceElementId || el.id,
-        sourceImageId: el.sourceImageId,
-        sourceImageSize: el.sourceImageSize,
-        bbox: el.bbox,
-        rawPreview: el.rawPreview,
-        selected: true,
-        processed: false,
-        result: null
-    }));
-
-    renderUpscaleElements();
-    const last = state.upscaleItems[state.upscaleItems.length - 1];
-    if (last) showUpscaleCanvas(last.src, last);
-    $('upscaleBtn').disabled = false;
-    $('upscaleExportBtn').disabled = true;
-    showToast(`已同步 ${processed.length} 个抠图结果`);
-});
-
-// 初始化发送下拉菜单
-initSendDropdown('upscaleSendBtn', 'upscaleSendMenu', (target) => {
-    const sel = state.upscaleItems.filter(e => e.selected);
-    if (!sel.length) { showToast('请先选择元素', 'error'); return; }
-    
-    const srcKey = 'result'; // 放大后的结果
-    
-    if (target === 'split') {
-        syncElementsToTarget(state.splitElements, sel, (el) => ({
-            index: 0,
-            preview: el[srcKey] || el.src,
-            selected: true,
-            name: el.name || ('element_' + el.index),
-            sourceElementId: el.sourceElementId || el.id,
-            sourceImageId: el.sourceImageId,
-            sourceImageSize: el.sourceImageSize,
-            bbox: el.bbox,
-            rawPreview: el.rawPreview
-        }));
-        renderSplitElements();
-        document.querySelector('.tab[data-panel="split"]').click();
-    } else if (target === 'remove') {
-        syncElementsToTarget(state.removeElements, sel, (el) => ({
-            index: 0,
-            preview: el[srcKey] || el.src,
-            selected: true,
-            processed: false,
-            result: null,
-            name: el.name || ('element_' + el.index),
-            sourceElementId: el.sourceElementId || el.id,
-            sourceImageId: el.sourceImageId,
-            sourceImageSize: el.sourceImageSize,
-            bbox: el.bbox,
-            rawPreview: el.rawPreview
-        }));
-        renderRemoveElements();
-        document.querySelector('.tab[data-panel="remove"]').click();
-    } else if (target === 'recognize') {
-        syncElementsToTarget(state.recognizeItems, sel, (el) => ({
-            index: 0,
-            src: el[srcKey] || el.src,
-            name: el.name || ('element_' + el.index),
-            sourceElementId: el.sourceElementId || el.id,
-            sourceImageId: el.sourceImageId,
-            sourceImageSize: el.sourceImageSize,
-            bbox: el.bbox,
-            rawPreview: el.rawPreview,
-            selected: true,
-            label: null,
-            confidence: null,
-            suggestedName: null
-        }));
-        renderRecognizeElements();
-        document.querySelector('.tab[data-panel="recognize"]').click();
-    }
-    
-    showToast(`已同步 ${sel.length} 个元素`);
-});
 
 // 全选/取消
 $('selectUpscaleAll')?.addEventListener('click', () => {
-    state.upscaleItems.forEach(e => e.selected = true);
+    selectAll(state.selection, 'upscale', state.elements);
     renderUpscaleElements();
 });
 $('deselectUpscaleAll')?.addEventListener('click', () => {
-    state.upscaleItems.forEach(e => e.selected = false);
+    clearSelection(state.selection, 'upscale');
     renderUpscaleElements();
 });
 
@@ -338,7 +219,7 @@ $('upscaleModel')?.addEventListener('change', e => {
 
 // ============ 开始放大 ============
 $('upscaleBtn')?.addEventListener('click', async () => {
-    const sel = state.upscaleItems.filter(e => e.selected);
+    const sel = getTabSelected('upscale');
     if (!sel.length) { showToast('请先选择元素', 'error'); return; }
 
     $('upscaleBtn').disabled = true;
@@ -353,13 +234,15 @@ $('upscaleBtn')?.addEventListener('click', async () => {
 
     for (let i = 0; i < sel.length; i++) {
         const el = sel[i];
-        if (el.processed) { successCount++; continue; }
 
         $('upscaleProgressText').textContent = `处理中 (${i + 1}/${total})...`;
         setStatus(`放大中 (${i + 1}/${total})...`, true);
 
         try {
-            const blob = await fetch(el.src).then(r => r.blob());
+            const inputMode = $('upscaleInputSource')?.value || 'auto';
+            const purpose = inputMode === 'split' ? 'upscale-input-split' : inputMode === 'remove' ? 'upscale-input-remove' : 'upscale-input';
+            const inputSrc = getElementImage(el, purpose);
+            const blob = await fetch(inputSrc).then(r => r.blob());
             const fd = new FormData();
             fd.append('file', blob, 'image.png');
             const upRes = await fetch(API + '/api/upload', { method: 'POST', body: fd });
@@ -378,10 +261,11 @@ $('upscaleBtn')?.addEventListener('click', async () => {
             }
 
             const data = await res.json();
-            el.processed = true;
-            el.result = data.preview;
-            el.resultWidth = data.width;
-            el.resultHeight = data.height;
+            el.upscale.processed = true;
+            el.upscale.result = data.preview;
+            el.upscale.resultWidth = data.width;
+            el.upscale.resultHeight = data.height;
+            el.upscale.inputVersion = inputMode === 'auto' ? (el.remove?.result ? 'remove' : 'split') : inputMode;
             successCount++;
         } catch (err) {
             console.error('元素放大失败:', err);
@@ -391,8 +275,8 @@ $('upscaleBtn')?.addEventListener('click', async () => {
     renderUpscaleElements();
 
     // 更新画布显示当前元素的放大结果
-    if (upscaleCanvasState.currentElement && upscaleCanvasState.currentElement.processed) {
-        showUpscaleCanvas(upscaleCanvasState.currentElement.result, upscaleCanvasState.currentElement);
+    if (upscaleCanvasState.currentElement && upscaleCanvasState.currentElement.upscale?.processed) {
+        showUpscaleCanvas(upscaleCanvasState.currentElement.upscale.result, upscaleCanvasState.currentElement);
     }
 
     $('upscaleBtn').disabled = false;
@@ -404,33 +288,8 @@ $('upscaleBtn')?.addEventListener('click', async () => {
 
 // ============ 导出 ============
 $('upscaleExportBtn')?.addEventListener('click', async () => {
-    const results = state.upscaleItems.filter(e => e.processed && e.result);
-    if (!results.length) { showToast('没有可导出的结果', 'error'); return; }
-
     const format = $('upscaleFormat').value || 'png';
-
-    for (let i = 0; i < results.length; i++) {
-        const el = results[i];
-        const fd = new FormData();
-        fd.append('base64_data', el.result);
-        fd.append('filename', `${el.name}.${format}`);
-        fd.append('format', format);
-
-        try {
-            const res = await fetch(API + '/api/upscale/export', { method: 'POST', body: fd });
-            if (!res.ok) continue;
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${el.name}.${format}`;
-            a.click();
-            URL.revokeObjectURL(url);
-            await new Promise(r => setTimeout(r, 200));
-        } catch (err) { /* skip */ }
-    }
-
-    showToast('导出完成');
+    if (window.doExport) await window.doExport('upscale', format);
 });
 
 // ============ 快捷键 ============

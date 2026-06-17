@@ -20,7 +20,8 @@
         
         // 换图按钮 - 重置状态并触发文件选择
         $('splitReupload').addEventListener('click', () => {
-            state.splitElements = [];
+            state.elements = [];
+            state.selection = window.ElementModel.createSelectionState();
             state.splitImageId = null;
             state.splitImageSize = null;
             state.splitHasManualEdits = false;
@@ -30,7 +31,7 @@
             $('toolbar').style.display = 'none';
             const overlay = $('overlayCanvas');
             if (overlay) { overlay.width = 0; overlay.height = 0; }
-            renderSplitElements();
+            renderAllElementViews();
             $('fileInput').click();
         });
         
@@ -166,18 +167,14 @@
                 if (!res.ok) throw new Error('检测失败');
                 const data = await res.json();
                 $('splitImage').src = data.preview;
-                state.splitElements = (data.elements || []).map((el, i) => ({ 
-                    ...el, 
-                    id: createElementId('split'),
+                state.elements = (data.elements || []).map((el, i) => createElementFromSplit(el, i, {
                     sourceImageId: state.splitImageId,
                     sourceImageSize: state.splitImageSize,
-                    selected: true, 
-                    name: 'element_' + (i + 1)
                 }));
-                state.splitElements.forEach(el => { el.sourceElementId = el.id; });
-                reindexElements(state.splitElements);
+                state.selection = window.ElementModel.createSelectionState();
+                selectAll(state.selection, 'split', state.elements);
                 state.splitHasManualEdits = false;
-                renderSplitElements();
+                renderAllElementViews();
                 setStatus('找到 ' + data.count + ' 个元素');
                 showToast('检测到 ' + data.count + ' 个元素', 'success');
             } catch (err) { setStatus(err.message, false, true); }
@@ -185,40 +182,40 @@
         }
         
         function renderSplitElements() {
-            const has = state.splitElements.length > 0;
+            const has = state.elements.length > 0;
             $('splitBar').classList.toggle('hidden', !has);
-            $('splitCount').textContent = state.splitElements.length + ' 个';
+            $('splitCount').textContent = state.elements.length + ' 个';
             
             const list = $('splitList');
             list.innerHTML = '';
             
-            state.splitElements.forEach((el, i) => {
+            state.elements.forEach((el, i) => {
                 const div = document.createElement('div');
-                div.className = 'elem-card' + (el.selected ? ' selected' : '');
+                const selected = isSelected(state.selection, 'split', el.id);
+                div.className = 'elem-card' + (selected ? ' selected' : '');
                 div.dataset.index = el.index;
-                div.innerHTML = '<img src="' + el.preview + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
+                div.dataset.id = el.id;
+                div.innerHTML = '<img src="' + getElementImage(el, 'split') + '"><span class="num">' + el.index + '</span><button class="card-delete" title="删除">×</button>';
                 div.addEventListener('click', e => {
                     if (e.target.classList.contains('card-delete')) return;
                     if (e.shiftKey) {
-                        // Shift+点击：追加选中
-                        el.selected = true;
+                        setSelected(state.selection, 'split', el.id, true);
                     } else {
-                        // 普通单击：只选当前，取消其他
-                        state.splitElements.forEach(x => x.selected = false);
-                        el.selected = true;
+                        setOnlySelected(state.selection, 'split', el.id);
                     }
                     renderSplitElements();
                 });
                 div.addEventListener('dblclick', e => {
                     if (e.target.classList.contains('card-delete')) return;
-                    openModal(el.preview);
+                    openModal(getElementImage(el, 'split'));
                 });
                 div.querySelector('.card-delete').addEventListener('click', e => {
                     e.stopPropagation();
-                    state.splitElements.splice(i, 1);
-                    reindexElements(state.splitElements);
+                    state.elements.splice(i, 1);
+                    reindexElements(state.elements);
+                    pruneSelections(state.selection, state.elements);
                     state.splitHasManualEdits = true;
-                    renderSplitElements();
+                    renderAllElementViews();
                 });
                 list.appendChild(div);
             });
@@ -226,11 +223,11 @@
             updateBadges();
             updateElementsLayout();
             drawOverlay();
-            updateElementDetail('split', state.splitElements);
+            updateElementDetail('split', state.elements);
         }
         
-        $('selectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = true); renderSplitElements(); });
-        $('deselectSplitAll').addEventListener('click', () => { state.splitElements.forEach(e => e.selected = false); renderSplitElements(); });
+        $('selectSplitAll').addEventListener('click', () => { selectAll(state.selection, 'split', state.elements); renderSplitElements(); updateBadges(); });
+        $('deselectSplitAll').addEventListener('click', () => { clearSelection(state.selection, 'split'); renderSplitElements(); updateBadges(); });
         
         // 切分导出 - 下拉菜单
         $('splitExport').addEventListener('click', e => {
@@ -253,15 +250,8 @@
         });
         
         async function doExport(panel, format) {
-            let source;
-            if (panel === 'remove') {
-                // 抠图 tab 只导出已处理的
-                const selectedProcessed = state.removeElements.filter(e => e.processed && e.selected);
-                source = selectedProcessed.length ? selectedProcessed : state.removeElements.filter(e => e.processed);
-            } else {
-                const selected = state.splitElements.filter(e => e.selected);
-                source = selected.length ? selected : state.splitElements;
-            }
+            const selected = getTabSelected(panel);
+            const source = selected.length ? selected : state.elements;
             
             if (!source.length) { showToast('没有可导出的元素', 'error'); return; }
             
@@ -271,13 +261,20 @@
                 if (!ok) return;
             }
             
-            const imgKey = panel === 'remove' ? 'result' : 'preview';
+            const exportModeEl = $(panel + 'ExportSource');
+            const exportMode = exportModeEl ? exportModeEl.value : panel === 'split' ? 'split' : 'latest';
+            const imagePurpose = exportMode === 'split' ? 'export-split'
+                : exportMode === 'remove' ? 'export-remove'
+                : exportMode === 'upscale' ? 'export-upscale'
+                : 'export-latest';
             
             if (format === 'png') {
                 // 单个 PNG
                 for (const el of source) {
+                    const image = getElementImage(el, imagePurpose);
+                    if (!image) continue;
                     const a = document.createElement('a');
-                    a.href = el[imgKey];
+                    a.href = image;
                     a.download = (el.name || ('element_' + el.index)) + '.png';
                     a.click();
                     await new Promise(r => setTimeout(r, 200));
@@ -288,8 +285,8 @@
                 showToast('正在打包...', '');
                 const elementsData = source.map(el => ({
                     name: (el.name || ('element_' + el.index)) + '.png',
-                    base64: el[imgKey]
-                }));
+                    base64: getElementImage(el, imagePurpose)
+                })).filter(el => el.base64);
                 const fd = new FormData();
                 fd.append('elements_json', JSON.stringify(elementsData));
                 const resp = await fetch(API + '/api/export_zip_from_elements', { method: 'POST', body: fd });
@@ -309,10 +306,10 @@
                 
                 const elementsData = source.map(el => ({
                     name: el.name || ('Element ' + el.index),
-                    base64: el[imgKey],
+                    base64: getElementImage(el, imagePurpose),
                     x: useBbox ? (el.bbox ? el.bbox[0] : 0) : 0,
                     y: useBbox ? (el.bbox ? el.bbox[1] : 0) : 0
-                }));
+                })).filter(el => el.base64);
                 
                 // 获取画布尺寸
                 let canvasW, canvasH;
@@ -325,7 +322,7 @@
                 } else {
                     // 抠图 tab 或左上对齐：用第一张图尺寸
                     const firstImg = new Image();
-                    firstImg.src = source[0][imgKey];
+                    firstImg.src = elementsData[0].base64;
                     await new Promise(r => firstImg.onload = r);
                     canvasW = firstImg.naturalWidth;
                     canvasH = firstImg.naturalHeight;
@@ -345,68 +342,4 @@
             }
         }
         window.doExport = doExport;
-        
-        // 初始化发送下拉菜单
-        initSendDropdown('splitSendBtn', 'splitSendMenu', (target) => {
-            const sel = state.splitElements.filter(e => e.selected);
-            if (!sel.length) { showToast('请先选择元素', 'error'); return; }
-            
-            if (target === 'remove') {
-                syncElementsToTarget(state.removeElements, sel, (el) => ({
-                    index: 0,
-                    preview: el.preview,
-                    selected: true,
-                    processed: false,
-                    result: null,
-                    name: el.name || ('element_' + el.index),
-                    sourceElementId: el.sourceElementId || el.id,
-                    sourceImageId: el.sourceImageId,
-                    sourceImageSize: el.sourceImageSize,
-                    bbox: el.bbox,
-                    rawPreview: el.rawPreview,
-                    type: el.type || null
-                }));
-                renderRemoveElements();
-                document.querySelector('.tab[data-panel="remove"]').click();
-            } else if (target === 'upscale') {
-                syncElementsToTarget(state.upscaleItems, sel, (el) => ({
-                    index: 0,
-                    src: el.preview,
-                    name: el.name || ('element_' + el.index),
-                    sourceElementId: el.sourceElementId || el.id,
-                    sourceImageId: el.sourceImageId,
-                    sourceImageSize: el.sourceImageSize,
-                    bbox: el.bbox,
-                    rawPreview: el.rawPreview,
-                    selected: true,
-                    processed: false,
-                    result: null
-                }));
-                renderUpscaleElements();
-                // 自动显示第一个元素到画布
-                const first = state.upscaleItems[0];
-                if (first) showUpscaleCanvas(first.src, first);
-                $('upscaleBtn').disabled = false;
-                document.querySelector('.tab[data-panel="upscale"]').click();
-            } else if (target === 'recognize') {
-                syncElementsToTarget(state.recognizeItems, sel, (el) => ({
-                    index: 0,
-                    src: el.preview,
-                    name: el.name || ('element_' + el.index),
-                    sourceElementId: el.sourceElementId || el.id,
-                    sourceImageId: el.sourceImageId,
-                    sourceImageSize: el.sourceImageSize,
-                    bbox: el.bbox,
-                    rawPreview: el.rawPreview,
-                    selected: true,
-                    label: null,
-                    confidence: null,
-                    suggestedName: null
-                }));
-                renderRecognizeElements();
-                document.querySelector('.tab[data-panel="recognize"]').click();
-            }
-            
-            showToast(`已同步 ${sel.length} 个元素`);
-        });
         
