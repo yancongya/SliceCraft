@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SliceCraft - 切片屋</title>
+    <link rel="stylesheet" href="styles.css?v=unified-elements-2">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 2L4 10v12l12 8 12-8V10L16 2z"/>
+                    <path d="M16 2v28"/>
+                    <path d="M4 10l12 8 12-8"/>
+                    <path d="M10 6l4 2.7"/>
+                    <path d="M22 6l-4 2.7"/>
+                    <path d="M7 20l4-2.7"/>
+                    <path d="M25 20l-4-2.7"/>
+                </svg>
+                SliceCraft
+            </div>
+            <div class="tabs">
+                <button class="tab active" data-panel="split">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    切分 <span class="badge hidden" id="splitBadge">0</span>
+                </button>
+                <button class="tab" data-panel="remove">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    抠图 <span class="badge hidden" id="removeBadge">0</span>
+                </button>
+                <button class="tab" data-panel="upscale">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                    AI 放大 <span class="badge hidden" id="upscaleBadge">0</span>
+                </button>
+                <button class="tab" data-panel="recognize">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    识别 <span class="badge hidden" id="recognizeBadge">0</span>
+                </button>
+            </div>
+            <div class="spacer"></div>
+            <div class="cache-info" id="cacheInfo" title="点击清理缓存">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                <span id="cacheSize">0 MB</span>
+                <span id="cacheCount">0 张</span>
+            </div>
+            <button class="theme-toggle" id="themeToggle" title="切换主题">
+                <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+            <div class="version">v1.0</div>
+        </header>
+        
+        <main class="main">
+            <!-- 切分面板 -->
+            <div class="panel active" id="panel-split">
+                <div class="layout">
+                    <div class="content">
+                        <div class="preview" id="splitPreview" onselectstart="return false" style="flex: 6;">
+                            <!-- 工具栏 -->
+                            <div class="toolbar" id="toolbar" style="display:none;">
+                                <div class="toolbar-inner">
+                                    <button class="tool-btn" id="lassoBtn" title="套索工具 (L)">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                                        套索
+                                    </button>
+                                    <div class="tool-divider"></div>
+                                    <span class="tool-hint" id="toolHint"></span>
+                                </div>
+                            </div>
+                            <div class="upload" id="uploadZone">
+                                <div class="upload-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                </div>
+                                <div class="upload-title">拖拽图片到此处</div>
+                                <div class="upload-hint">或点击选择 · PNG、JPG、WebP</div>
+                                <button class="btn-outline" id="loadExampleBtn">加载示例图片</button>
+                            </div>
+                            <img id="splitImage" class="hidden" draggable="false">
+                            <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+                            <div class="marquee" id="marquee"></div>
+                        </div>
+                        <div class="elements-bar hidden" id="splitBar" style="flex: 3;">
+                            <div class="bar-resize"></div>
+                            <div class="elements-header">
+                                <span class="elements-title">检测到的元素</span>
+                                <div class="element-detail hidden" id="splitDetail">
+                                    <span class="info-size" id="splitInfoSize"></span>
+                                    <input type="text" class="info-name" id="splitInfoName" placeholder="名称">
+                                </div>
+                                <div class="elements-actions">
+                                    <button class="btn-sm btn-sm-ghost" id="splitReupload" title="重新选择图片">换图</button>
+                                    <span class="elements-count" id="splitCount">0 个</span>
+                                    <button class="btn-sm btn-sm-ghost" id="selectSplitAll">全选</button>
+                                    <button class="btn-sm btn-sm-ghost" id="deselectSplitAll">取消</button>
+                                    <div class="psd-layout" id="splitPsdLayout">
+                                        <span class="psd-label">PSD:</span>
+                                        <label><input type="radio" name="splitPsdPos" value="bbox" checked> 按位置</label>
+                                        <label><input type="radio" name="splitPsdPos" value="zero"> 左上对齐</label>
+                                    </div>
+                                    <div class="export-group">
+                                        <button class="btn-sm btn-sm-ghost" id="splitExport" title="导出">导出 ▾</button>
+                                        <div class="export-dropdown hidden" id="splitExportMenu">
+                                            <button data-format="png">单个 PNG</button>
+                                            <button data-format="zip">ZIP 打包</button>
+                                            <button data-format="psd">PSD 文件</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="elements-container single-row" id="splitList"></div>
+                        </div>
+                    </div>
+                    <div class="sidebar">
+                        <div class="sidebar-resize"></div>
+                        <div class="section">
+                            <div class="section-title">检测方法</div>
+                            <select class="select" id="detectMethod">
+                                <option value="smart">智能检测</option>
+                                <option value="canny">Canny 边缘</option>
+                                <option value="flood">泛洪填充</option>
+                                <option value="alpha">Alpha 通道</option>
+                            </select>
+                        </div>
+                        <div class="section">
+                            <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+                                快速预设
+                                <button class="btn-sm btn-sm-ghost" id="resetBtn" title="重置当前方法参数">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                    重置
+                                </button>
+                            </div>
+                            <div class="presets">
+                                <button class="preset" data-p="sticker">贴纸/图标</button>
+                                <button class="preset" data-p="sprite">游戏精灵</button>
+                                <button class="preset" data-p="handdrawn">手绘插画</button>
+                                <button class="preset" data-p="solid">纯色背景</button>
+                            </div>
+                        </div>
+                        <div class="section" id="secSmart">
+                            <div class="section-title">智能检测</div>
+                            <div class="field">
+                                <select class="select" id="smartMode">
+                                    <option value="auto">自动选择</option>
+                                    <option value="color">颜色分割</option>
+                                    <option value="threshold">自适应阈值</option>
+                                    <option value="edge">增强边缘</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <div class="field-head"><span class="field-label">灵敏度</span><span class="field-value" id="v_sensitivity">50</span></div>
+                                <input type="range" class="range" id="sensitivity" min="10" max="90" value="50">
+                            </div>
+                        </div>
+                        <div class="section hidden" id="secCanny">
+                            <div class="section-title">Canny 参数</div>
+                            <div class="field"><div class="field-head"><span class="field-label">高斯模糊</span><span class="field-value" id="v_gaussSigma">1.0</span></div><input type="range" class="range" id="gaussSigma" min="0.5" max="5" step="0.1" value="1.0"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">低阈值</span><span class="field-value" id="v_threshold1">50</span></div><input type="range" class="range" id="threshold1" min="30" max="150" value="50"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">高阈值</span><span class="field-value" id="v_threshold2">150</span></div><input type="range" class="range" id="threshold2" min="80" max="300" value="150"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">闭运算</span><span class="field-value" id="v_closeIter">1</span></div><input type="range" class="range" id="closeIter" min="0" max="5" value="1"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">膨胀</span><span class="field-value" id="v_dilateIter">1</span></div><input type="range" class="range" id="dilateIter" min="0" max="5" value="1"></div>
+                        </div>
+                        <div class="section hidden" id="secFlood">
+                            <div class="section-title">泛洪填充</div>
+                            <div class="field"><div class="field-head"><span class="field-label">颜色容差</span><span class="field-value" id="v_floodTol">30</span></div><input type="range" class="range" id="floodTol" min="10" max="100" value="30"></div>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">通用参数</div>
+                            <div class="field"><div class="field-head"><span class="field-label">最小面积</span><span class="field-value" id="v_minArea">500</span></div><input type="range" class="range" id="minArea" min="100" max="5000" step="100" value="500"></div>
+                            <div class="field"><div class="field-head"><span class="field-label">合并距离</span><span class="field-value" id="v_mergeDist">20</span></div><input type="range" class="range" id="mergeDist" min="0" max="100" step="5" value="20"></div>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">元素后处理</div>
+                            <div class="field">
+                                <div class="field-head"><span class="field-label">边距 Padding</span><span class="field-value" id="v_padding">0</span></div>
+                                <input type="range" class="range" id="padding" min="-50" max="50" value="0">
+                            </div>
+                            <div style="font-size:11px;color:var(--text-3);margin-top:4px;">正值增加边距，负值裁切更多</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 抠图面板 -->
+            <div class="panel" id="panel-remove">
+                <div class="layout">
+                    <div class="content">
+                        <div class="preview" id="removePreview" onselectstart="return false" style="flex: 6;">
+                            <div class="canvas-container" id="canvasContainer" style="display:none;">
+                                <canvas id="removeCanvas"></canvas>
+                            </div>
+                            <!-- 抠图工具栏 -->
+                            <div class="toolbar" id="removeToolbar" style="display:none;">
+                                <div class="toolbar-inner">
+                                    <button class="tool-btn" id="resetViewBtn" title="归位 (R)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                    </button>
+                                    <div class="tool-divider"></div>
+                                    <button class="tool-btn" id="eyeBtn" title="按住查看原图 (V)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                    <div class="tool-divider"></div>
+                                    <button class="tool-btn" id="eraserBtn" title="橡皮擦 (E) - 右键切换模式">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                                        <span id="eraserModeLabel" style="font-size:10px;">擦除</span>
+                                    </button>
+                                    <input type="range" id="eraserSize" min="5" max="100" value="20" style="width:60px;height:3px;" title="橡皮擦大小">
+                                    <div class="tool-divider"></div>
+                                    <button class="tool-btn active" data-bg="checker" title="透明棋盘格">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                                    </button>
+                                    <button class="tool-btn" data-bg="white" title="白色背景">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    </button>
+                                    <button class="tool-btn" data-bg="black" title="黑色背景">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    </button>
+                                    <input type="color" id="customBgColor" value="#808080" style="width:24px;height:24px;border:none;cursor:pointer;" title="自定义颜色">
+                                </div>
+                            </div>
+                            <div class="empty" id="removeEmpty">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                                <p>请先在切分面板生成元素</p>
+                                <button class="btn-outline" id="uploadElemBtn">前往切分</button>
+                            </div>
+                            <div class="results hidden" id="removeResults"></div>
+                        </div>
+                        <div class="elements-bar hidden" id="removeBar" style="flex: 3;">
+                            <div class="bar-resize"></div>
+                            <div class="elements-header">
+                                <span class="elements-title">待处理元素</span>
+                                <div class="element-detail hidden" id="removeDetail">
+                                    <span class="info-size" id="removeInfoSize"></span>
+                                    <input type="text" class="info-name" id="removeInfoName" placeholder="名称">
+                                </div>
+                                <div class="elements-actions">
+                                    <button class="btn-sm btn-sm-ghost" id="removeReupload" title="回到切分面板新增元素">+ 添加</button>
+                                    <span class="elements-count" id="removeCount">0 个</span>
+                                    <button class="btn-sm btn-sm-ghost" id="selectRemAll">全选</button>
+                                    <button class="btn-sm btn-sm-ghost" id="deselectRemAll">取消</button>
+                                    <div class="psd-layout" id="removePsdLayout">
+                                        <span class="psd-label">PSD:</span>
+                                        <label><input type="radio" name="removePsdPos" value="bbox" checked> 按位置</label>
+                                        <label><input type="radio" name="removePsdPos" value="zero"> 左上对齐</label>
+                                    </div>
+                                    <div class="export-group">
+                                        <button class="btn-sm btn-sm-ghost" id="removeExport" title="导出" disabled>导出 ▾</button>
+                                        <div class="export-dropdown hidden" id="removeExportMenu">
+                                            <button data-format="png">单个 PNG</button>
+                                            <button data-format="zip">ZIP 打包</button>
+                                            <button data-format="psd">PSD 文件</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="elements-container single-row" id="removeList"></div>
+                        </div>
+                    </div>
+                    <div class="sidebar">
+                        <div class="sidebar-resize"></div>
+                        <div class="section">
+                            <div class="section-title">抠图方法</div>
+                            <select class="select" id="removeMethod">
+                                <option value="rembg">AI 抠图 - 通用场景</option>
+                                <option value="flood">泛洪填充 - 从四角自动识别背景色</option>
+                                <option value="color_pick">吸管取色 - 点击背景颜色删除</option>
+                                <option value="combined">双重抠图 - AI + 泛洪取并集</option>
+                            </select>
+                        </div>
+                        <div class="section" id="secRembg">
+                            <div class="section-title">AI 模型</div>
+                            <select class="select" id="rembgModel">
+                                <option value="u2net">u2net - 通用物体，最稳定</option>
+                                <option value="u2netp">u2netp - 轻量版，速度快</option>
+                                <option value="isnet-general-use">isnet - 边缘更精细</option>
+                                <option value="silueta">silueta - 细节保留最好</option>
+                            </select>
+                            <div class="field-hint">纯色背景建议用「吸管取色」，复杂主体用 u2net 或 isnet</div>
+                        </div>
+                        <div class="section hidden" id="secRemFlood">
+                            <div class="section-title">泛洪参数</div>
+                            <div class="field"><div class="field-head"><span class="field-label">颜色容差</span><span class="field-value" id="v_remFloodTol">30</span></div><input type="range" class="range" id="remFloodTol" min="10" max="100" value="30"></div>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">输入来源</div>
+                            <select class="select" id="removeInputSource">
+                                <option value="auto">最新可用（放大优先）</option>
+                                <option value="split">原始切片</option>
+                                <option value="upscale">放大结果</option>
+                            </select>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">导出来源</div>
+                            <select class="select" id="removeExportSource">
+                                <option value="latest">最新结果</option>
+                                <option value="split">原始切片</option>
+                                <option value="remove">抠图结果</option>
+                                <option value="upscale">放大结果</option>
+                            </select>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-primary" id="processBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                开始抠图
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AI 放大面板 -->
+            <div class="panel" id="panel-upscale">
+                <div class="layout">
+                    <div class="content">
+                        <div class="preview" id="upscalePreview" onselectstart="return false" style="flex: 6;">
+                            <div class="toolbar" id="upscaleToolbar" style="display:none;">
+                                <div class="toolbar-inner">
+                                    <button class="tool-btn" id="upscaleResetViewBtn" title="归位 (R)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                    </button>
+                                    <div class="tool-divider"></div>
+                                    <button class="tool-btn" id="upscaleEyeBtn" title="按住查看原图 (V)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                    <div class="tool-divider"></div>
+                                    <button class="tool-btn active" data-upscale-bg="checker" title="透明棋盘格">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                                    </button>
+                                    <button class="tool-btn" data-upscale-bg="white" title="白色背景">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    </button>
+                                    <button class="tool-btn" data-upscale-bg="black" title="黑色背景">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    </button>
+                                    <input type="color" id="upscaleCustomBgColor" value="#808080" style="width:24px;height:24px;border:none;cursor:pointer;" title="自定义颜色">
+                                    <div class="tool-divider"></div>
+                                    <span class="tool-hint" id="sizeInfo"></span>
+                                </div>
+                            </div>
+                            <div class="canvas-container" id="upscaleCanvasContainer" style="display:none;">
+                                <canvas id="upscaleCanvas"></canvas>
+                            </div>
+                            <div class="upload" id="upscaleUploadZone">
+                                <div class="upload-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                                </div>
+                                <div class="upload-title">请先在切分面板生成元素</div>
+                                <div class="upload-hint">切分后的元素会自动出现在这里</div>
+                            </div>
+                        </div>
+                        <div class="elements-bar hidden" id="upscaleBar" style="flex: 3;">
+                            <div class="bar-resize"></div>
+                            <div class="elements-header">
+                                <span class="elements-title">待放大元素</span>
+                                <div class="element-detail hidden" id="upscaleDetail">
+                                    <span class="info-size" id="upscaleInfoSize"></span>
+                                    <input type="text" class="info-name" id="upscaleInfoName" placeholder="名称">
+                                </div>
+                                <div class="elements-actions">
+                                    <span class="elements-count" id="upscaleCount">0 个</span>
+                                    <button class="btn-sm btn-sm-ghost" id="selectUpscaleAll">全选</button>
+                                    <button class="btn-sm btn-sm-ghost" id="deselectUpscaleAll">取消</button>
+                                </div>
+                            </div>
+                            <div class="elements-container single-row" id="upscaleList"></div>
+                        </div>
+                    </div>
+                    <div class="sidebar">
+                        <div class="sidebar-resize"></div>
+                        <div class="section">
+                            <div class="section-title">AI 模型</div>
+                            <select class="select" id="upscaleModel">
+                                <option value="realesrgan-light">轻量版 (4x) - 速度快</option>
+                            </select>
+                            <div class="field-hint" id="modelDescription">ONNX 模型，无需 PyTorch，CPU 友好</div>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">放大倍数</div>
+                            <select class="select" id="upscaleScale">
+                                <option value="">自动（模型默认）</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="4">4x</option>
+                            </select>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">输入来源</div>
+                            <select class="select" id="upscaleInputSource">
+                                <option value="auto">最新可用（抠图优先）</option>
+                                <option value="split">原始切片</option>
+                                <option value="remove">抠图结果</option>
+                            </select>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">导出格式</div>
+                            <select class="select" id="upscaleFormat">
+                                <option value="png">PNG（无损）</option>
+                                <option value="jpg">JPG（有损，体积小）</option>
+                                <option value="webp">WebP（推荐）</option>
+                            </select>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">导出来源</div>
+                            <select class="select" id="upscaleExportSource">
+                                <option value="latest">最新结果</option>
+                                <option value="split">原始切片</option>
+                                <option value="remove">抠图结果</option>
+                                <option value="upscale">放大结果</option>
+                            </select>
+                        </div>
+                        <div class="actions">
+                            <div class="progress hidden" id="upscaleProgress">
+                                <div class="progress-bar"></div>
+                                <span id="upscaleProgressText">处理中...</span>
+                            </div>
+                            <button class="btn btn-primary" id="upscaleBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>
+                                开始放大
+                            </button>
+                            <button class="btn btn-outline" id="upscaleExportBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                导出
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 识别面板 -->
+            <div class="panel" id="panel-recognize">
+                <div class="layout">
+                    <div class="content">
+                        <div class="elements-bar" id="recognizeBar" style="flex: 1;">
+                            <div class="elements-header">
+                                <span class="elements-title">待识别元素</span>
+                                <div class="element-detail hidden" id="recognizeDetail">
+                                    <span class="info-size" id="recognizeInfoSize"></span>
+                                    <input type="text" class="info-name" id="recognizeInfoName" placeholder="名称">
+                                </div>
+                                <div class="elements-actions">
+                                    <span class="elements-count" id="recognizeCount">0 个</span>
+                                    <button class="btn-sm btn-sm-ghost" id="selectRecognizeAll">全选</button>
+                                    <button class="btn-sm btn-sm-ghost" id="deselectRecognizeAll">取消</button>
+                                </div>
+                            </div>
+                            <div class="elements-container multi-row" id="recognizeList"></div>
+                        </div>
+                    </div>
+                    <div class="sidebar">
+                        <div class="sidebar-resize"></div>
+                        <div class="section">
+                            <div class="section-title">识别模型</div>
+                            <div class="field-hint" id="recognizeModelDesc">SigLIP/CLIP 零样本分类，使用内置标签库，也可输入自定义标签</div>
+                        </div>
+                        <div class="section" id="customLabelsSection">
+                            <div class="section-title">自定义标签</div>
+                            <textarea class="select" id="customLabelsInput" rows="3" placeholder="用逗号分隔，如：icon,button,logo,symbol"></textarea>
+                            <div class="field-hint">留空使用默认标签库</div>
+                        </div>
+                        <div class="section">
+                            <div class="section-title">输入来源</div>
+                            <select class="select" id="recognizeInputSource">
+                                <option value="latest">最新结果</option>
+                                <option value="split">原始切片</option>
+                                <option value="remove">抠图结果</option>
+                                <option value="upscale">放大结果</option>
+                            </select>
+                        </div>
+                        <div class="actions">
+                            <div class="progress hidden" id="recognizeProgress">
+                                <div class="progress-bar"></div>
+                                <span id="recognizeProgressText">处理中...</span>
+                            </div>
+                            <button class="btn btn-primary" id="recognizeBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                开始识别
+                            </button>
+                            <button class="btn btn-outline" id="applyNamesBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                应用到名称
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="statusbar">
+            <div class="status-left"><span class="dot" id="dot"></span><span id="statusText">就绪</span></div>
+            <span id="statusHint">点击预览 · 框选：拖拽元素条空白区域 · 减选：Shift+拖拽 · 套索：L键</span>
+        </footer>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-body">
+            <button class="modal-close" id="modalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <img id="modalImg" src="">
+        </div>
+    </div>
+    
+    <!-- Neumorphic Dialog -->
+    <div class="dialog-overlay hidden" id="dialogOverlay">
+        <div class="dialog">
+            <div class="dialog-title" id="dialogTitle">确认</div>
+            <div class="dialog-body" id="dialogBody">内容</div>
+            <div class="dialog-actions">
+                <button class="dialog-btn" id="dialogCancel">取消</button>
+                <button class="dialog-btn dialog-btn-primary" id="dialogConfirm">确认</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Neumorphic Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <input type="file" id="elemInput" accept="image/*" multiple style="display:none">
+    <input type="file" id="upscaleFileInput" accept="image/*" style="display:none">
+    
+    <script src="element-model.js?v=unified-elements-2"></script>
+    <script src="shared.js?v=unified-elements-2"></script>
+    <script src="split.js?v=unified-elements-2"></script>
+    <script src="remove.js?v=unified-elements-2"></script>
+    <script src="upscale.js?v=unified-elements-2"></script>
+    <script src="recognize.js?v=unified-elements-2"></script>
+</body>
+</html>

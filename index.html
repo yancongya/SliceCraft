@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SliceCraft - 切片屋</title>
+  <meta name="description" content="SliceCraft 是面向 UI 截图和设计稿的元素提取工作台，支持切分、抠图、AI 放大、识别命名和多格式导出。">
+  <style>
+    :root {
+      --paper: #fbf6e8;
+      --paper-2: #fffaf0;
+      --ink: #20202a;
+      --muted: #6f695d;
+      --blue: #2468e8;
+      --red: #e65353;
+      --green: #14956a;
+      --yellow: #f2bd38;
+      --violet: #755ad7;
+      --line: #2d2a25;
+      --faint: rgba(32, 32, 42, 0.12);
+      --shadow: 10px 12px 0 rgba(32, 32, 42, 0.12);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-rounded, "Comic Sans MS", "Bradley Hand", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 20px 20px, rgba(32,32,42,0.055) 1.6px, transparent 1.8px),
+        linear-gradient(90deg, rgba(32,32,42,0.035) 1px, transparent 1px),
+        linear-gradient(rgba(32,32,42,0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 28px 28px, 56px 56px, 56px 56px, auto;
+      line-height: 1.55;
+      letter-spacing: 0;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.35;
+      background-image:
+        linear-gradient(115deg, transparent 0 42%, rgba(255,255,255,0.35) 43%, transparent 45%),
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 28%);
+      mix-blend-mode: multiply;
+      z-index: -1;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    svg { display: block; }
+
+    .wrap {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(251, 246, 232, 0.86);
+      backdrop-filter: blur(14px);
+      border-bottom: 2px dashed rgba(32,32,42,0.16);
+    }
+
+    .nav-inner {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 900;
+      font-size: 20px;
+    }
+
+    .brand svg {
+      width: 34px;
+      height: 34px;
+      color: var(--blue);
+      transform: rotate(-6deg);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .nav-links a {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 11px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
+    }
+
+    .nav-links a:hover,
+    .nav-links a:focus-visible {
+      background: rgba(255,255,255,0.55);
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+
+    .nav-links a.is-active {
+      color: var(--ink);
+      background: rgba(255,255,255,0.72);
+      border-color: var(--line);
+      box-shadow: 3px 4px 0 rgba(32,32,42,0.12);
+      transform: rotate(-1deg);
+    }
+
+    .sketch-btn {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border: 2px solid var(--line);
+      border-radius: 999px 18px 999px 18px;
+      background: var(--yellow);
+      box-shadow: 5px 6px 0 rgba(32,32,42,0.18);
+      font-weight: 900;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .sketch-btn:hover,
+    .sketch-btn:focus-visible {
+      transform: translate(-2px, -2px) rotate(-1deg);
+      box-shadow: 8px 9px 0 rgba(32,32,42,0.18);
+      outline: none;
+    }
+
+    .sketch-btn.secondary {
+      background: var(--paper-2);
+    }
+
+    .github-btn {
+      background: #eaf2ff;
+      color: var(--ink);
+    }
+
+    .hero {
+      min-height: calc(100svh - 70px);
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(410px, 1.08fr);
+      gap: clamp(24px, 4.5vw, 62px);
+      align-items: center;
+      padding: clamp(28px, 5vw, 62px) 0 clamp(22px, 4vw, 42px);
+    }
+
+    .paper-tag {
+      width: fit-content;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border: 2px solid var(--line);
+      border-radius: 12px 18px 10px 20px;
+      background: #fff;
+      box-shadow: 4px 5px 0 rgba(32,32,42,0.12);
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 900;
+      transform: rotate(-1.4deg);
+    }
+
+    h1 {
+      margin: 18px 0 16px;
+      max-width: 720px;
+      font-size: clamp(44px, 5.8vw, 78px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      font-weight: 950;
+    }
+
+    .hero-title {
+      position: relative;
+      isolation: isolate;
+      display: grid;
+      gap: .02em;
+      width: fit-content;
+      max-width: 100%;
+      padding: .18em .24em .22em .2em;
+      color: #20202a;
+      font-family: ui-rounded, "Comic Sans MS", "Bradley Hand", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      font-weight: 950;
+      letter-spacing: 0;
+      text-shadow:
+        1px 0 0 rgba(32,32,42,.32),
+        -1px 0 0 rgba(32,32,42,.12),
+        0 2px 0 rgba(255,255,255,.75);
+      animation: titleStickerPose 2.2s steps(1, end) infinite;
+      transform-origin: 52% 56%;
+    }
+
+    .hero-title::before,
+    .hero-title::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      transform-origin: center;
+      border-radius: 34px 50px 38px 46px / 42px 32px 48px 34px;
+      animation: titleStickerShape 2.2s steps(1, end) infinite;
+    }
+
+    .hero-title::before {
+      inset: -.03em -.045em -.035em -.04em;
+      background:
+        linear-gradient(130deg, rgba(255,255,255,.34), transparent 18%),
+        #eaf2ff;
+      border: 5px solid var(--line);
+      box-shadow:
+        10px 11px 0 rgba(32,32,42,.12),
+        0 0 0 2px rgba(255,255,255,.55) inset;
+      z-index: -1;
+    }
+
+    .hero-title::after {
+      inset: auto -.02em -.08em .12em;
+      height: .42em;
+      background:
+        linear-gradient(90deg, transparent, rgba(255,255,255,.28) 20% 74%, transparent),
+        rgba(242,189,56,.62);
+      border: 3px solid rgba(45,42,37,.38);
+      border-radius: 999px 36px 999px 42px;
+      transform: rotate(-1.4deg);
+      box-shadow: 4px 5px 0 rgba(32,32,42,.08);
+      z-index: -2;
+    }
+
+    .headline-line {
+      display: block;
+      white-space: nowrap;
+    }
+
+    .title-line {
+      position: relative;
+      display: flex;
+      align-items: baseline;
+      width: fit-content;
+      transform: rotate(var(--line-rot, 0deg));
+    }
+
+    .title-line:nth-child(1) { --line-rot: -.8deg; }
+    .title-line:nth-child(2) { --line-rot: .6deg; margin-top: -.03em; }
+
+    .title-sticker {
+      padding: 0 .06em .02em .02em;
+      z-index: 0;
+    }
+
+    .scribble-letter {
+      display: inline-block;
+      transform-origin: 50% 62%;
+      transform: rotate(var(--r1, 0deg)) scaleX(var(--sx1, 1)) scaleY(var(--sy1, 1)) skewX(var(--sk1, 0deg));
+      animation: none;
+    }
+
+    .title-line:nth-child(1) .scribble-letter:nth-child(1) { --r1:-2.4deg; --r2:-.6deg; --r3:-1.8deg; --r4:-3deg; --sx1:1.02; --sx2:.99; --sx3:1.04; --sx4:1; --sy1:.98; --sy2:1.03; --sy3:1; --sy4:1.02; --sk1:-1deg; --sk2:.5deg; --sk3:-.4deg; --sk4:.8deg; --delay:-.1s; }
+    .title-line:nth-child(1) .scribble-letter:nth-child(2) { --r1:1.8deg; --r2:2.6deg; --r3:.8deg; --r4:1.4deg; --sx1:.98; --sx2:1.02; --sx3:1; --sx4:1.03; --sy1:1.04; --sy2:.99; --sy3:1.02; --sy4:1; --sk1:.8deg; --sk2:-.7deg; --sk3:.2deg; --sk4:-.4deg; --delay:-.34s; }
+    .title-line:nth-child(1) .scribble-letter:nth-child(3) { --r1:-.9deg; --r2:-2.2deg; --r3:-.2deg; --r4:-1.4deg; --sx1:1.01; --sx2:1.04; --sx3:.99; --sx4:1.02; --sy1:1; --sy2:.98; --sy3:1.03; --sy4:1; --sk1:-.6deg; --sk2:.4deg; --sk3:-1deg; --sk4:.3deg; --delay:-.62s; }
+    .title-line:nth-child(1) .scribble-letter:nth-child(4) { --r1:2.6deg; --r2:1.2deg; --r3:2.1deg; --r4:.7deg; --sx1:.99; --sx2:1.02; --sx3:1.03; --sx4:1; --sy1:1.02; --sy2:1; --sy3:.98; --sy4:1.03; --sk1:.3deg; --sk2:-.9deg; --sk3:.7deg; --sk4:-.3deg; --delay:-.86s; }
+    .title-line:nth-child(2) .scribble-letter:nth-child(1) { --r1:-1.8deg; --r2:-2.8deg; --r3:-.6deg; --r4:-1.2deg; --sx1:1.03; --sx2:1; --sx3:1.05; --sx4:.99; --sy1:1; --sy2:1.04; --sy3:.98; --sy4:1.02; --sk1:-.5deg; --sk2:.8deg; --sk3:-.8deg; --sk4:.2deg; --delay:-.18s; }
+    .title-line:nth-child(2) .scribble-letter:nth-child(2) { --r1:1deg; --r2:.2deg; --r3:1.9deg; --r4:2.4deg; --sx1:.98; --sx2:1.02; --sx3:1; --sx4:1.04; --sy1:1.04; --sy2:1; --sy3:1.02; --sy4:.99; --sk1:.9deg; --sk2:-.3deg; --sk3:.6deg; --sk4:-.7deg; --delay:-.46s; }
+    .title-line:nth-child(2) .scribble-letter:nth-child(3) { --r1:-2.2deg; --r2:-.8deg; --r3:-1.4deg; --r4:-2.8deg; --sx1:1.01; --sx2:.99; --sx3:1.03; --sx4:1.01; --sy1:1.02; --sy2:1.03; --sy3:.98; --sy4:1; --sk1:-.8deg; --sk2:.4deg; --sk3:-.3deg; --sk4:.9deg; --delay:-.7s; }
+    .title-line:nth-child(2) .scribble-letter:nth-child(4) { --r1:2.3deg; --r2:1.4deg; --r3:3deg; --r4:.9deg; --sx1:1; --sx2:1.04; --sx3:.98; --sx4:1.02; --sy1:.99; --sy2:1.02; --sy3:1.04; --sy4:1; --sk1:.6deg; --sk2:-1deg; --sk3:.4deg; --sk4:-.2deg; --delay:-.94s; }
+    .title-line:nth-child(2) .scribble-letter:nth-child(5) { --r1:-.6deg; --r2:-1.8deg; --r3:.4deg; --r4:-1deg; --sx1:1.04; --sx2:1; --sx3:1.02; --sx4:.99; --sy1:1; --sy2:1.03; --sy3:.98; --sy4:1.04; --sk1:-.2deg; --sk2:.7deg; --sk3:-.9deg; --sk4:.4deg; --delay:-1.16s; }
+
+    @keyframes titleStickerPose {
+      0%, 49.99% { transform: rotate(-1.15deg) scaleX(1) scaleY(1) skewX(-.3deg); }
+      50%, 100% { transform: rotate(-.45deg) scaleX(1.012) scaleY(.988) skewX(.45deg); }
+    }
+
+    @keyframes titleStickerShape {
+      0%, 49.99% {
+        border-radius: 34px 50px 38px 46px / 42px 32px 48px 34px;
+      }
+      50%, 100% {
+        border-radius: 48px 36px 52px 34px / 34px 46px 34px 50px;
+      }
+    }
+
+    @keyframes scribblePose {
+      0%, 24.99% {
+        transform: rotate(var(--r1, 0deg)) scaleX(var(--sx1, 1)) scaleY(var(--sy1, 1)) skewX(var(--sk1, 0deg));
+      }
+      25%, 49.99% {
+        transform: rotate(var(--r2, 0deg)) scaleX(var(--sx2, 1)) scaleY(var(--sy2, 1)) skewX(var(--sk2, 0deg));
+      }
+      50%, 74.99% {
+        transform: rotate(var(--r3, 0deg)) scaleX(var(--sx3, 1)) scaleY(var(--sy3, 1)) skewX(var(--sk3, 0deg));
+      }
+      75%, 100% {
+        transform: rotate(var(--r4, 0deg)) scaleX(var(--sx4, 1)) scaleY(var(--sy4, 1)) skewX(var(--sk4, 0deg));
+      }
+    }
+
+    @supports (-webkit-text-stroke: 1px #000) {
+      .scribble-letter {
+        -webkit-text-stroke: 1px rgba(32,32,42,.18);
+        paint-order: stroke fill;
+      }
+    }
+
+    .marker {
+      position: relative;
+      display: inline-block;
+      z-index: 0;
+    }
+
+    .marker::after {
+      content: "";
+      position: absolute;
+      left: -0.04em;
+      right: -0.04em;
+      bottom: 0.03em;
+      height: 0.28em;
+      background: rgba(242,189,56,0.72);
+      border-radius: 999px 20px 999px 22px;
+      z-index: -1;
+      transform: rotate(-1.2deg);
+    }
+
+    .lead {
+      margin: 0;
+      max-width: 620px;
+      color: var(--muted);
+      font-size: clamp(16px, 1.55vw, 20px);
+      font-weight: 700;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .notes {
+      display: grid;
+      gap: 10px;
+      margin-top: 22px;
+      max-width: 560px;
+    }
+
+    .note {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .note i {
+      width: 17px;
+      height: 17px;
+      border: 2px solid var(--line);
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 2px 2px 0 rgba(32,32,42,0.16);
+      flex: 0 0 auto;
+    }
+
+    .sketch-stage {
+      position: relative;
+      min-height: min(560px, calc(100svh - 158px));
+    }
+
+    .sheet {
+      position: relative;
+      border: 3px solid var(--line);
+      border-radius: 28px 18px 26px 20px;
+      background: rgba(255,250,240,0.92);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform: rotate(1.2deg);
+      max-height: min(560px, calc(100svh - 158px));
+    }
+
+    .sheet::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border: 2px dashed rgba(32,32,42,0.16);
+      border-radius: 20px 13px 20px 15px;
+      pointer-events: none;
+    }
+
+    .hero-drawing {
+      width: 100%;
+      aspect-ratio: 1.28;
+      padding: 20px;
+      max-height: min(520px, calc(100svh - 188px));
+    }
+
+    .jitter {
+      animation: jitter 3.4s ease-in-out infinite;
+      transform-origin: center;
+      transform-box: fill-box;
+    }
+
+    .dash {
+      stroke-dasharray: 8 9;
+      animation: dash 1.2s linear infinite;
+    }
+
+    .floaty {
+      animation: floaty 3s ease-in-out infinite;
+      transform-origin: center;
+      transform-box: fill-box;
+    }
+
+    .floaty.delay-1 { animation-delay: .3s; }
+    .floaty.delay-2 { animation-delay: .6s; }
+    .floaty.delay-3 { animation-delay: .9s; }
+
+    .story-stage,
+    .story-dim,
+    .story-select,
+    .story-zoom,
+    .story-remove,
+    .story-upscale,
+    .story-name,
+    .story-export,
+    .story-progress {
+      transform-origin: center;
+      transform-box: fill-box;
+    }
+
+    .story-stage { animation: storyStage 12s ease-in-out infinite; }
+    .story-dim { animation: storyDim 12s ease-in-out infinite; }
+    .story-select { animation: storySelect 12s ease-in-out infinite; }
+    .story-zoom { animation: storyZoom 12s ease-in-out infinite; }
+    .story-remove { animation: storyRemove 12s ease-in-out infinite; }
+    .story-upscale { animation: storyUpscale 12s ease-in-out infinite; }
+    .story-name { animation: storyName 12s ease-in-out infinite; }
+    .story-export { animation: storyExport 12s ease-in-out infinite; }
+    .story-progress { animation: storyProgress 12s linear infinite; }
+    .story-spark { animation: storySpark 1.7s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+    .story-spark.delay-1 { animation-delay: .28s; }
+    .story-spark.delay-2 { animation-delay: .56s; }
+
+    @keyframes dash { to { stroke-dashoffset: -34; } }
+    @keyframes floaty { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(-1deg); } }
+    @keyframes jitter { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(.8deg); } 60% { transform: rotate(-.8deg); } }
+    @keyframes storyStage {
+      0%, 16% { transform: translate(0, 0) scale(1); }
+      22%, 68% { transform: translate(-102px, -64px) scale(1.52); }
+      76%, 100% { transform: translate(0, 0) scale(1); }
+    }
+    @keyframes storyDim {
+      0%, 16% { opacity: 0; }
+      22%, 68% { opacity: .62; }
+      76%, 100% { opacity: 0; }
+    }
+    @keyframes storySelect {
+      0%, 7% { opacity: 0; transform: scale(.98); }
+      10%, 68% { opacity: 1; transform: scale(1); }
+      76%, 100% { opacity: 0; transform: scale(1.04); }
+    }
+    @keyframes storyZoom {
+      0%, 18% { opacity: 0; transform: translate(-22px, 12px) scale(.84) rotate(-2deg); }
+      24%, 36% { opacity: 1; transform: translate(0, 0) scale(1) rotate(-2deg); }
+      42%, 100% { opacity: 0; transform: translate(12px, -6px) scale(.96) rotate(-2deg); }
+    }
+    @keyframes storyRemove {
+      0%, 34% { opacity: 0; transform: translateY(18px) rotate(2deg); }
+      40%, 52% { opacity: 1; transform: translateY(0) rotate(2deg); }
+      58%, 100% { opacity: 0; transform: translateY(-8px) rotate(2deg); }
+    }
+    @keyframes storyUpscale {
+      0%, 50% { opacity: 0; transform: translateY(18px) rotate(-1.5deg) scale(.94); }
+      56%, 68% { opacity: 1; transform: translateY(0) rotate(-1.5deg) scale(1); }
+      74%, 100% { opacity: 0; transform: translateY(-8px) rotate(-1.5deg) scale(.98); }
+    }
+    @keyframes storyName {
+      0%, 64% { opacity: 0; transform: translateY(12px) scale(.96); }
+      70%, 84% { opacity: 1; transform: translateY(0) scale(1); }
+      90%, 100% { opacity: 0; transform: translateY(-8px) scale(.98); }
+    }
+    @keyframes storyExport {
+      0%, 72% { opacity: 0; transform: translate(18px, 12px) rotate(2deg) scale(.92); }
+      80%, 96% { opacity: 1; transform: translate(0, 0) rotate(2deg) scale(1); }
+      100% { opacity: 0; transform: translate(10px, 6px) rotate(2deg) scale(.96); }
+    }
+    @keyframes storyProgress {
+      0% { stroke-dashoffset: 420; }
+      100% { stroke-dashoffset: 0; }
+    }
+    @keyframes storySpark {
+      0%, 100% { transform: translateY(0) scale(1); opacity: .35; }
+      50% { transform: translateY(-6px) scale(1.08); opacity: 1; }
+    }
+
+    .caption-card {
+      position: absolute;
+      right: 22px;
+      bottom: 18px;
+      width: min(300px, 58%);
+      padding: 12px 14px;
+      border: 3px solid var(--line);
+      border-radius: 18px 28px 16px 24px;
+      background: #fff;
+      box-shadow: 6px 7px 0 rgba(32,32,42,0.14);
+      transform: rotate(-1.4deg);
+    }
+
+    .caption-card b { display: block; margin-bottom: 6px; }
+    .caption-card span { color: var(--muted); font-size: 14px; font-weight: 800; }
+
+    .section {
+      padding: clamp(72px, 9vw, 118px) 0;
+      border-top: 2px dashed rgba(32,32,42,0.16);
+    }
+
+    .section-head {
+      max-width: 860px;
+      margin-bottom: 34px;
+    }
+
+    .kicker {
+      margin: 0 0 10px;
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 0;
+      max-width: 840px;
+      font-size: clamp(34px, 4.8vw, 62px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      max-width: 670px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 720;
+    }
+
+    .workflow-board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .sketch-panel {
+      min-height: 255px;
+      padding: 20px;
+      border: 3px solid var(--line);
+      border-radius: var(--r, 22px 16px 28px 18px);
+      background: var(--bg, #fff);
+      box-shadow: 7px 8px 0 rgba(32,32,42,0.13);
+      transform: rotate(var(--rot, 0deg));
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sketch-panel svg {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 18px;
+    }
+
+    .sketch-panel h3 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+
+    .sketch-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 760;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .diagram-sheet {
+      border: 3px solid var(--line);
+      border-radius: 28px 18px 30px 22px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 3vw, 30px);
+      transform: rotate(-.8deg);
+    }
+
+    .source-svg {
+      width: 100%;
+      height: 430px;
+    }
+
+    .source-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .source-item {
+      padding: 18px;
+      border: 3px solid var(--line);
+      border-radius: 18px 28px 16px 22px;
+      background: var(--paper-2);
+      box-shadow: 6px 7px 0 rgba(32,32,42,0.12);
+      transform: rotate(var(--rot, 0deg));
+    }
+
+    .source-item b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 19px;
+    }
+
+    .source-item p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 760;
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .screen-card {
+      border: 3px solid var(--line);
+      border-radius: 24px 18px 26px 16px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform: rotate(var(--rot, 0deg));
+    }
+
+    .screen-card img {
+      width: 100%;
+      aspect-ratio: 16 / 9.6;
+      object-fit: cover;
+      object-position: top left;
+      border-bottom: 3px solid var(--line);
+    }
+
+    .screen-copy {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      padding: 18px;
+    }
+
+    .screen-copy h3 { margin: 0 0 5px; font-size: 23px; }
+    .screen-copy p { margin: 0; color: var(--muted); font-weight: 760; }
+
+    .sticker {
+      min-height: 30px;
+      padding: 4px 10px;
+      border: 2px solid var(--line);
+      border-radius: 999px 18px 999px 20px;
+      background: var(--yellow);
+      font-size: 12px;
+      font-weight: 950;
+      white-space: nowrap;
+      box-shadow: 3px 4px 0 rgba(32,32,42,0.12);
+    }
+
+    .export-board {
+      display: grid;
+      grid-template-columns: 1.05fr repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .export-intro,
+    .export-tile {
+      border: 3px solid var(--line);
+      border-radius: 20px 28px 16px 22px;
+      box-shadow: 7px 8px 0 rgba(32,32,42,0.13);
+      padding: 20px;
+      background: #fff;
+      transform: rotate(var(--rot, 0deg));
+    }
+
+    .export-intro {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .export-intro p { color: #d8d2c7; }
+    .export-tile svg { width: 68px; height: 68px; margin-bottom: 14px; }
+    .export-tile b { display: block; font-size: 24px; margin-bottom: 8px; }
+    .export-tile p, .export-intro p { margin: 0; font-weight: 760; }
+    .export-tile p { color: var(--muted); }
+
+    .final {
+      padding: clamp(70px, 9vw, 110px) 0;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.18) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px),
+        var(--blue);
+      background-size: 34px 34px;
+      color: #fff;
+      border-top: 3px solid var(--line);
+    }
+
+    .final-card {
+      border: 3px solid var(--line);
+      border-radius: 30px 18px 34px 20px;
+      background: rgba(255,250,240,0.98);
+      color: var(--ink);
+      box-shadow: 10px 12px 0 rgba(32,32,42,0.18);
+      padding: clamp(24px, 5vw, 42px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      transform: rotate(-.7deg);
+    }
+
+    .final-card p {
+      color: var(--muted);
+      font-weight: 760;
+      max-width: 650px;
+    }
+
+    .footer {
+      padding: 24px 0;
+      color: var(--muted);
+      font-weight: 760;
+    }
+
+    .footer .wrap {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px) rotate(.5deg);
+      transition: opacity 650ms ease, transform 650ms ease;
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0) rotate(var(--rot, 0deg));
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .001ms !important;
+      }
+    }
+
+    @media (max-width: 1060px) {
+      .hero, .source-grid { grid-template-columns: 1fr; }
+      .sketch-stage, .sheet, .hero-drawing { min-height: auto; max-height: none; }
+      .workflow-board, .export-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .caption-card { position: relative; right: auto; bottom: auto; width: 100%; margin-top: 18px; }
+    }
+
+    @media (max-width: 720px) {
+      .wrap { width: min(100% - 24px, 1180px); }
+      .nav-links a:not(.sketch-btn) { display: none; }
+      .github-btn { display: none !important; }
+      .hero { padding-top: 28px; }
+      .workflow-board, .screens, .export-board { grid-template-columns: 1fr; }
+      .final-card, .screen-copy, .footer .wrap { flex-direction: column; align-items: flex-start; }
+      h1 { font-size: clamp(38px, 12vw, 52px); }
+      .headline-line { white-space: normal; }
+      .title-line { flex-wrap: nowrap; }
+      .source-svg { height: 340px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="SliceCraft">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 2L4 10v12l12 8 12-8V10L16 2z"/>
+          <path d="M16 2v28"/>
+          <path d="M4 10l12 8 12-8"/>
+          <path d="M10 6l4 2.7"/>
+          <path d="M22 6l-4 2.7"/>
+          <path d="M7 20l4-2.7"/>
+          <path d="M25 20l-4-2.7"/>
+        </svg>
+        SliceCraft
+      </a>
+      <div class="nav-links">
+        <a href="#flow" data-nav-section="flow">流程</a>
+        <a href="#source" data-nav-section="source">数据</a>
+        <a href="#screens" data-nav-section="screens">截图</a>
+        <a href="#export" data-nav-section="export">导出</a>
+        <a class="sketch-btn secondary github-btn" href="https://github.com/yancongya/SliceCraft" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="sketch-btn" href="frontend/index.html">打开应用</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <section class="hero wrap">
+      <div>
+        <div class="paper-tag">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h7"/></svg>
+          本地模型切片工作台
+        </div>
+        <h1 class="hero-title" aria-label="本地切片，截图变素材">
+          <span class="headline-line title-line" aria-hidden="true">
+            <span class="scribble-letter">本</span><span class="scribble-letter">地</span><span class="scribble-letter">切</span><span class="scribble-letter">片</span>
+          </span>
+          <span class="headline-line title-line title-sticker" aria-hidden="true">
+            <span class="scribble-letter">截</span><span class="scribble-letter">图</span><span class="scribble-letter">变</span><span class="scribble-letter">素</span><span class="scribble-letter">材</span>
+          </span>
+        </h1>
+        <p class="lead">SliceCraft 用纯本地模型处理截图，把切分、抠图、放大、识别结果写回同一批元素，不上传云端，也不消耗大模型 tokens。</p>
+        <div class="hero-actions">
+          <a class="sketch-btn" href="frontend/index.html">进入应用</a>
+          <a class="sketch-btn secondary" href="#flow">看流程草图</a>
+        </div>
+        <div class="notes">
+          <div class="note"><i></i>纯本地模型处理，截图不上传云端</div>
+          <div class="note"><i style="background:var(--yellow)"></i>抠图、放大、识别复用同一批切分元素</div>
+          <div class="note"><i style="background:var(--red)"></i>支持 Docker / NAS / 桌面端内网部署</div>
+        </div>
+      </div>
+
+      <div class="sketch-stage">
+        <div class="sheet">
+          <svg class="hero-drawing" viewBox="0 0 760 590" role="img" aria-label="手绘风格截图多段处理动画">
+            <defs>
+              <filter id="roughShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="4" dy="6" stdDeviation="0" flood-color="#20202a" flood-opacity=".16"/>
+              </filter>
+              <pattern id="tinyGrid" width="18" height="18" patternUnits="userSpaceOnUse">
+                <rect width="9" height="9" fill="#f2f2f2"/>
+                <rect x="9" y="9" width="9" height="9" fill="#e1e1e1"/>
+              </pattern>
+            </defs>
+            <path d="M70 532 C218 492 446 492 640 532" fill="none" stroke="#20202a" stroke-width="4" stroke-linecap="round" opacity=".2"/>
+            <path class="story-progress" d="M96 532 C242 500 448 502 620 532" fill="none" stroke="#2468e8" stroke-width="6" stroke-linecap="round" stroke-dasharray="420"/>
+
+            <g class="story-stage">
+              <rect x="58" y="52" width="440" height="350" rx="28" fill="#fff" stroke="#20202a" stroke-width="4"/>
+              <path d="M86 116h384M86 180h384M86 244h384M86 308h384" stroke="#20202a" stroke-width="2" opacity=".12"/>
+              <path d="M114 118c52-38 114-26 122 26 10 62-70 68-102 46-34-24-20-58-20-72Z" fill="#eaf2ff" stroke="#2468e8" stroke-width="4" class="jitter"/>
+              <path d="M292 102h78M292 132h48" stroke="#e65353" stroke-width="11" stroke-linecap="round" class="floaty delay-1"/>
+              <path d="M324 218c38-36 104-26 118 18 16 52-44 84-98 64-52-20-58-46-20-82Z" fill="#fff2c8" stroke="#f2bd38" stroke-width="4" class="jitter"/>
+              <path d="M112 282c30 20 66 20 98 0" fill="none" stroke="#14956a" stroke-width="9" stroke-linecap="round" class="floaty"/>
+              <rect x="260" y="266" width="56" height="52" rx="9" fill="#f0ecff" stroke="#755ad7" stroke-width="4"/>
+              <path d="M274 284h28M274 300h20" stroke="#755ad7" stroke-width="5" stroke-linecap="round"/>
+              <path d="M398 312l36 0 14 22-30 28-34-24Z" fill="#e9fbf4" stroke="#14956a" stroke-width="4" class="floaty delay-2"/>
+              <g class="story-dim">
+                <rect x="72" y="68" width="408" height="312" rx="20" fill="#20202a" opacity=".38"/>
+                <path d="M324 218c38-36 104-26 118 18 16 52-44 84-98 64-52-20-58-46-20-82Z" fill="#fff2c8" stroke="#f2bd38" stroke-width="5"/>
+              </g>
+              <g class="story-select">
+                <path d="M308 196c74-44 156-20 166 46 12 82-88 116-154 82-62-32-70-90-12-128Z" fill="rgba(36,104,232,.12)" stroke="#2468e8" stroke-width="5" stroke-dasharray="10 8"/>
+                <circle cx="312" cy="198" r="7" fill="#2468e8"/>
+                <circle cx="470" cy="244" r="7" fill="#2468e8"/>
+              </g>
+              <text x="84" y="370" font-size="21" font-weight="900" fill="#6f695d">原图里有多个元素</text>
+            </g>
+
+            <g class="story-zoom" filter="url(#roughShadow)">
+              <rect x="472" y="62" width="202" height="156" rx="22" fill="#fff" stroke="#20202a" stroke-width="4"/>
+              <path d="M490 90h166M490 126h166M490 162h166" stroke="#20202a" stroke-width="2" opacity=".12"/>
+              <path d="M534 84c46-36 104-22 112 26 8 62-66 76-100 50-34-24-24-58-12-76Z" fill="#fff2c8" stroke="#f2bd38" stroke-width="5"/>
+              <text x="573" y="200" text-anchor="middle" font-size="19" font-weight="900" fill="#6f695d">切分特写</text>
+            </g>
+
+            <g class="story-remove" filter="url(#roughShadow)">
+              <rect x="516" y="64" width="154" height="112" rx="20" fill="url(#tinyGrid)" stroke="#20202a" stroke-width="4"/>
+              <path d="M552 104c32-24 78-18 84 18 7 42-48 52-72 34-22-16-18-40-12-52Z" fill="#fff2c8" stroke="#14956a" stroke-width="5"/>
+              <text x="593" y="202" text-anchor="middle" font-size="20" font-weight="900" fill="#14956a">抠图</text>
+            </g>
+
+            <g class="story-upscale" filter="url(#roughShadow)">
+              <rect x="516" y="232" width="170" height="126" rx="22" fill="#f0ecff" stroke="#20202a" stroke-width="4"/>
+              <path d="M556 276c40-30 90-18 98 22 8 54-58 64-88 42-28-20-20-48-10-64Z" fill="#fff2c8" stroke="#755ad7" stroke-width="5"/>
+              <path d="M648 244h22v22M546 342h-22v-22M669 245l-30 30M524 342l30-30" stroke="#755ad7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="601" y="384" text-anchor="middle" font-size="20" font-weight="900" fill="#755ad7">放大</text>
+            </g>
+
+            <g class="story-name" filter="url(#roughShadow)">
+              <rect x="500" y="378" width="198" height="78" rx="18" fill="#fff2c8" stroke="#20202a" stroke-width="4"/>
+              <path d="M528 418h30M574 418h84" stroke="#20202a" stroke-width="5" stroke-linecap="round"/>
+              <text x="614" y="434" text-anchor="middle" font-size="22" font-weight="900" fill="#9a6f00">黄色气泡</text>
+              <text x="599" y="478" text-anchor="middle" font-size="20" font-weight="900" fill="#6f695d">识别命名</text>
+            </g>
+
+            <g class="story-export" filter="url(#roughShadow)">
+              <path d="M232 406 C316 454 438 454 532 394" fill="none" stroke="#20202a" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 9"/>
+              <rect x="526" y="252" width="142" height="112" rx="18" fill="#e9fbf4" stroke="#20202a" stroke-width="4"/>
+              <path d="M550 290h94M550 316h72" stroke="#14956a" stroke-width="6" stroke-linecap="round"/>
+              <path d="M634 338l18 0 0-20" fill="none" stroke="#20202a" stroke-width="5" stroke-linecap="round"/>
+              <text x="597" y="278" text-anchor="middle" font-size="24" font-weight="950" fill="#14956a">ZIP</text>
+              <text x="597" y="388" text-anchor="middle" font-size="20" font-weight="900" fill="#14956a">全局打包</text>
+            </g>
+
+            <g class="story-spark">
+              <path d="M690 108l14-12M698 130h20M690 152l14 12" stroke="#f2bd38" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <g class="story-spark delay-1">
+              <path d="M246 442l12-16M266 448l18-4M246 468l14 14" stroke="#2468e8" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <g class="story-spark delay-2">
+              <path d="M470 506l14-12M492 512h18M470 530l14 12" stroke="#e65353" stroke-width="5" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
+        <div class="caption-card">
+          <b>同一个元素一路处理</b>
+          <span>先特写处理，再回到全局一起打包。</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="kicker">本地流程</p>
+          <h2>四个步骤，但只有一份元素清单</h2>
+          <p>每个 tab 只负责处理同一批元素的不同结果，本地后端跑模型，不再复制列表、不再手动同步。</p>
+        </div>
+        <div class="workflow-board">
+          <article class="sketch-panel reveal" style="--bg:#eaf2ff;--rot:-1.4deg">
+            <svg viewBox="0 0 80 80" fill="none"><rect x="12" y="12" width="22" height="22" rx="5" fill="#fff" stroke="#20202a" stroke-width="4"/><rect x="46" y="12" width="22" height="22" rx="5" fill="#fff" stroke="#20202a" stroke-width="4"/><rect x="12" y="46" width="22" height="22" rx="5" fill="#fff" stroke="#20202a" stroke-width="4"/><path class="dash" d="M46 58h22" stroke="#2468e8" stroke-width="6" stroke-linecap="round"/></svg>
+            <h3>切分</h3>
+            <p>检测、套索、命名，生成唯一素材源。</p>
+          </article>
+          <article class="sketch-panel reveal" style="--bg:#e9fbf4;--rot:1deg">
+            <svg viewBox="0 0 80 80" fill="none"><path d="M18 58 54 22l10 10-36 36H18v-10Z" fill="#fff" stroke="#20202a" stroke-width="4"/><path class="floaty" d="M25 52h20" stroke="#14956a" stroke-width="6" stroke-linecap="round"/></svg>
+            <h3>抠图</h3>
+            <p>AI、泛洪、吸管结果写入抠图结果。</p>
+          </article>
+          <article class="sketch-panel reveal" style="--bg:#f0ecff;--rot:-.7deg">
+            <svg viewBox="0 0 80 80" fill="none"><path d="M50 12h18v18M30 68H12V50M66 14 46 34M14 66l20-20" stroke="#20202a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><rect class="floaty" x="28" y="28" width="24" height="24" rx="6" fill="#fff" stroke="#755ad7" stroke-width="4"/></svg>
+            <h3>放大</h3>
+            <p>高清版本写入放大结果，可再次作为输入。</p>
+          </article>
+          <article class="sketch-panel reveal" style="--bg:#fff2c8;--rot:1.2deg">
+            <svg viewBox="0 0 80 80" fill="none"><circle cx="34" cy="34" r="22" fill="#fff" stroke="#20202a" stroke-width="4"/><path d="m52 52 15 15" stroke="#20202a" stroke-width="6" stroke-linecap="round"/><path class="dash" d="M24 34h20" stroke="#f2bd38" stroke-width="6" stroke-linecap="round"/></svg>
+            <h3>识别</h3>
+            <p>标签变成全局名称和导出文件名。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="source">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="kicker">元素数据源</p>
+          <h2>统一数据源像一张素材索引卡</h2>
+          <p>一个元素同时保存原始切片、抠图结果、放大结果和识别标签；默认最新结果优先使用放大，其次抠图，最后原始切片。</p>
+        </div>
+        <div class="source-grid">
+          <div class="diagram-sheet reveal">
+            <svg class="source-svg" viewBox="0 0 620 430" role="img" aria-label="手绘元素数据源示意图">
+              <rect x="206" y="20" width="210" height="72" rx="20" fill="#fff" stroke="#20202a" stroke-width="4"/>
+              <text x="311" y="50" text-anchor="middle" font-size="24" font-weight="900" fill="#20202a">元素</text>
+              <text x="311" y="76" text-anchor="middle" font-size="14" font-weight="800" fill="#6f695d">编号 / 坐标 / 名称</text>
+              <path class="dash" d="M311 96 C170 130 140 158 132 198" fill="none" stroke="#2468e8" stroke-width="5" stroke-linecap="round"/>
+              <path class="dash" d="M311 96 C306 150 306 168 306 198" fill="none" stroke="#14956a" stroke-width="5" stroke-linecap="round"/>
+              <path class="dash" d="M311 96 C456 128 486 158 492 198" fill="none" stroke="#755ad7" stroke-width="5" stroke-linecap="round"/>
+              <rect x="42" y="198" width="170" height="92" rx="20" fill="#eaf2ff" stroke="#20202a" stroke-width="4"/>
+              <text x="127" y="236" text-anchor="middle" font-size="22" font-weight="900" fill="#2468e8">原始切片</text>
+              <text x="127" y="264" text-anchor="middle" font-size="13" font-weight="800" fill="#6f695d">预览 / 原图</text>
+              <rect x="224" y="198" width="170" height="92" rx="20" fill="#e9fbf4" stroke="#20202a" stroke-width="4"/>
+              <text x="309" y="236" text-anchor="middle" font-size="22" font-weight="900" fill="#14956a">抠图结果</text>
+              <text x="309" y="264" text-anchor="middle" font-size="13" font-weight="800" fill="#6f695d">结果 / 方法</text>
+              <rect x="406" y="198" width="170" height="92" rx="20" fill="#f0ecff" stroke="#20202a" stroke-width="4"/>
+              <text x="491" y="236" text-anchor="middle" font-size="22" font-weight="900" fill="#755ad7">放大结果</text>
+              <text x="491" y="264" text-anchor="middle" font-size="13" font-weight="800" fill="#6f695d">结果 / 来源</text>
+              <path class="dash" d="M306 294 C306 328 306 344 306 360" fill="none" stroke="#f2bd38" stroke-width="5" stroke-linecap="round"/>
+              <rect x="186" y="342" width="240" height="70" rx="20" fill="#fff2c8" stroke="#20202a" stroke-width="4"/>
+              <text x="306" y="384" text-anchor="middle" font-size="22" font-weight="900" fill="#9a6f00">识别标签 → 全局名称</text>
+            </svg>
+          </div>
+          <div class="source-list">
+            <div class="source-item reveal" style="--rot:1deg"><b>新增删除只在切分</b><p>切分面板固定原始元素，后续 tab 不再各自生成孤立列表。</p></div>
+            <div class="source-item reveal" style="--rot:-1.2deg"><b>处理结果可叠加</b><p>先抠图再放大、先放大再抠图都写回同一个元素对象。</p></div>
+            <div class="source-item reveal" style="--rot:.7deg"><b>命名全局生效</b><p>识别 tab 改名后，切分和导出文件名同步变化。</p></div>
+            <div class="source-item reveal" style="--rot:-.5deg"><b>导出来源可选</b><p>原始切片、抠图结果、放大结果、最新结果都能导出。</p></div>
+            <div class="source-item reveal" style="--rot:.9deg"><b>本地部署省 tokens</b><p>抠图、放大、识别走本地模型，适合 Docker 或 NAS 内网部署。</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="screens">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="kicker">界面截图</p>
+          <h2>真实界面集中展示</h2>
+          <p>真实产品截图只放在这一页，其他部分用手绘动画解释流程，避免页面变成截图堆叠。</p>
+        </div>
+        <div class="screens">
+          <article class="screen-card reveal" style="--rot:-.8deg">
+            <img src="image/切分.png" alt="切分面板截图" loading="lazy">
+            <div class="screen-copy"><div><h3>切分</h3><p>生成唯一元素清单。</p></div><span class="sticker">源数据</span></div>
+          </article>
+          <article class="screen-card reveal" style="--rot:.9deg">
+            <img src="image/抠图.png" alt="抠图面板截图" loading="lazy">
+            <div class="screen-copy"><div><h3>抠图</h3><p>写入抠图结果。</p></div><span class="sticker">抠图</span></div>
+          </article>
+          <article class="screen-card reveal" style="--rot:.6deg">
+            <img src="image/放大.png" alt="AI 放大面板截图" loading="lazy">
+            <div class="screen-copy"><div><h3>AI 放大</h3><p>写入放大结果。</p></div><span class="sticker">放大</span></div>
+          </article>
+          <article class="screen-card reveal" style="--rot:-1deg">
+            <img src="image/识别.png" alt="识别面板截图" loading="lazy">
+            <div class="screen-copy"><div><h3>识别</h3><p>标签同步到全局名称。</p></div><span class="sticker">命名</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="export">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="kicker">导出交付</p>
+          <h2>最后整理成可交付文件</h2>
+          <p>导出继续使用同一批元素，PSD 使用原始坐标，PNG/ZIP 使用全局名称，适合本地批量交付。</p>
+        </div>
+        <div class="export-board">
+          <div class="export-intro reveal" style="--rot:-1deg"><h3>素材出口</h3><p>选择来源，按当前选择导出；部署在本地服务或 Docker 容器里也能跑完整流程。</p></div>
+          <div class="export-tile reveal" style="--rot:1deg"><svg viewBox="0 0 80 80" fill="none"><rect x="16" y="10" width="42" height="56" rx="12" fill="#eaf2ff" stroke="#20202a" stroke-width="4"/><path class="floaty" d="M37 24v26m0 0-10-10m10 10 10-10" stroke="#2468e8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><b>PNG</b><p>透明单图。</p></div>
+          <div class="export-tile reveal" style="--rot:-.8deg"><svg viewBox="0 0 80 80" fill="none"><rect x="12" y="20" width="56" height="42" rx="12" fill="#e9fbf4" stroke="#20202a" stroke-width="4"/><path d="M24 32h32M24 42h28M24 52h22" stroke="#14956a" stroke-width="5" stroke-linecap="round"/></svg><b>ZIP</b><p>批量打包。</p></div>
+          <div class="export-tile reveal" style="--rot:.5deg"><svg viewBox="0 0 80 80" fill="none"><rect x="12" y="12" width="42" height="42" rx="12" fill="#f0ecff" stroke="#20202a" stroke-width="4"/><rect x="28" y="28" width="40" height="38" rx="12" fill="#fff" stroke="#755ad7" stroke-width="4"/></svg><b>PSD</b><p>保留图层位置。</p></div>
+          <div class="export-tile reveal" style="--rot:-1.1deg"><svg viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="27" fill="#fff2c8" stroke="#20202a" stroke-width="4"/><path class="dash" d="M28 42l9 9 18-24" stroke="#9a6f00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><b>最新</b><p>自动取最新结果。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <div class="final-card">
+          <div>
+            <h2>把截图拆成一张整洁的素材手账</h2>
+            <p>落地页是单文件，应用入口仍是 frontend/index.html。后端可用本地模型和 Docker 部署，减少云端传图和大模型 token 成本。</p>
+          </div>
+          <a class="sketch-btn" href="frontend/index.html">打开 SliceCraft</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <span>SliceCraft - 切片屋</span>
+      <span>Vanilla JS · FastAPI · ONNX Runtime · Real-ESRGAN · Docker Ready</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script>
+    (function() {
+      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var navItems = Array.prototype.slice.call(document.querySelectorAll("[data-nav-section]"));
+      var sections = navItems
+        .map(function(link) { return document.getElementById(link.getAttribute("data-nav-section")); })
+        .filter(Boolean);
+      function setActiveNav(id) {
+        navItems.forEach(function(link) {
+          link.classList.toggle("is-active", link.getAttribute("data-nav-section") === id);
+        });
+      }
+      if (sections.length) {
+        var currentHash = window.location.hash.replace("#", "");
+        if (currentHash) setActiveNav(currentHash);
+        var navObserver = new IntersectionObserver(function(entries) {
+          var visible = entries
+            .filter(function(entry) { return entry.isIntersecting; })
+            .sort(function(a, b) { return b.intersectionRatio - a.intersectionRatio; })[0];
+          if (!visible) return;
+          setActiveNav(visible.target.id);
+        }, { rootMargin: "-22% 0px -58% 0px", threshold: [0.08, 0.2, 0.4, 0.6] });
+        sections.forEach(function(section) { navObserver.observe(section); });
+        window.addEventListener("hashchange", function() {
+          setActiveNav(window.location.hash.replace("#", ""));
+        });
+      }
+      if (window.gsap && !reduce) {
+        gsap.registerPlugin(ScrollTrigger);
+        gsap.from(".paper-tag, h1, .lead, .hero-actions, .note", { y: 24, opacity: 0, duration: .72, stagger: .08, ease: "power3.out" });
+        gsap.from(".sheet", { y: 40, rotate: -2, opacity: 0, duration: .85, delay: .16, ease: "power3.out" });
+        gsap.from(".caption-card", { x: 28, y: 18, opacity: 0, duration: .65, delay: .42, ease: "power2.out" });
+        gsap.utils.toArray(".reveal").forEach(function(el) {
+          gsap.to(el, {
+            scrollTrigger: { trigger: el, start: "top 84%" },
+            opacity: 1,
+            y: 0,
+            rotate: getComputedStyle(el).getPropertyValue("--rot") || 0,
+            duration: .62,
+            ease: "power2.out"
+          });
+        });
+      } else {
+        var observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          });
+        }, { threshold: .12 });
+        document.querySelectorAll(".reveal").forEach(function(el) { observer.observe(el); });
+      }
+    })();
+  </script>
+</body>
+</html>
